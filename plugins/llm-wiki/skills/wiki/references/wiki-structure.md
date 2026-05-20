@@ -123,6 +123,8 @@ or `.audit/`) mean the layer has not been used yet.
 
 Same structure as above but rooted at `<project>/.wiki/` without `wikis.json` or `topics/`.
 
+For this fork, local `.wiki/` directories are Git-trackable by default. The wiki state includes `raw/`, `wiki/`, `output/`, `config.md`, `_index.md`, and `log.md`. Do not add `.wiki/` to `.gitignore` during init. Exclusions are handled later only for concrete risks such as secrets, large binaries, cache files, or scratch files.
+
 ## Wiki Resolution Order
 
 When a command runs, first resolve the hub path (HUB) from `~/.config/llm-wiki/config.json` (see `hub-resolution.md`). Then resolve which wiki to use:
@@ -349,6 +351,8 @@ This ensures both Obsidian (reads [[wikilink]]) and the agent (follows relative 
 - [Source Title](../../raw/type/file.md) — what this source contributed
 ```
 
+For Korean workspaces, `title`, `summary`, section headings, and body text are Korean by default unless the user explicitly asks for another language. Existing provenance fields such as `sources`, `confidence`, `volatility`, and `verified` remain unchanged.
+
 ## Source Reference Resolution
 
 The `sources:` field is a path list, not a bag of slugs. Maintenance workflows
@@ -451,14 +455,17 @@ generated: YYYY-MM-DD
 [Content in the appropriate format for the type]
 ```
 
+For Korean wiki content, output artifact `title`, filename topic portion, section headings, and body text are Korean by default unless the user explicitly asks for another language. Existing output fields remain unchanged.
+
 ## File Naming
 
-- **Raw sources**: `YYYY-MM-DD-descriptive-slug.md` (date prefix for chronological order)
-- **Wiki articles**: `descriptive-slug.md` (no date — living documents)
-- **Inventory records**: `descriptive-slug.md` (no date — durable tracking state)
-- **Dataset manifests**: `datasets/descriptive-slug/MANIFEST.md`
-- **Output artifacts**: `{type}-{topic-slug}-{YYYY-MM-DD}.md`
-- All filenames: lowercase, hyphens for spaces, no special characters, max 60 chars
+- **Raw sources**: `YYYY-MM-DD-한국어-요약명.md` by default for Korean workspaces.
+- **Wiki articles**: `한국어_문서명.md` or `한국어-문서명.md` without a date prefix; these are living documents.
+- **Inventory records**: keep the existing durable-record naming style unless a Korean workspace explicitly creates Korean tracking records.
+- **Dataset manifests**: keep `datasets/descriptive-slug/MANIFEST.md` for dataset compatibility.
+- **Output artifacts**: `{type}-한국어-주제명-YYYY-MM-DD.md` by default when generated from Korean wiki content.
+- **Korean filename policy**: Allowed characters for Korean wiki outputs are Korean letters, ASCII letters and digits, `_`, `-`, and `.`. Use `_` for structural separation, `-` for word separation, remove forbidden characters, and add a short numeric suffix on collisions.
+- Preserve existing raw paths and legacy filenames. The Korean filename rule applies to newly generated files.
 
 ## Tag Convention
 

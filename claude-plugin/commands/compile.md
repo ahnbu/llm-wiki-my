@@ -14,6 +14,8 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Bash(wc:*), Bash(date:
 
 Read the compilation protocol at `skills/wiki-manager/references/compilation.md` and the indexing protocol at `skills/wiki-manager/references/indexing.md`. Then compile raw sources into wiki articles.
 
+Korean by default: For this fork, generated wiki articles use Korean for human-facing titles, filenames, section headings, summaries, and body text unless the user explicitly asks for another language. The article must still be source-backed and synthesized, not a translated duplicate export.
+
 Inventory awareness: compile consumes `raw/` and writes `wiki/`; it does not
 compile inventory records into articles. Read `inventory/_index.md` only to
 notice active candidates, blocked source queues, or next actions that explain
@@ -53,6 +55,7 @@ raw sources to update active articles.
 
 5. **Write/Update articles**: Follow the protocol in `references/compilation.md` and core principle #9 (chunked writes):
    - New articles: Write frontmatter + abstract first, then Edit to append body, See Also, Sources
+   - New article filenames: use the Korean filename policy from `references/wiki-structure.md`. Do not create a separate Korean export copy; the file under `wiki/` is the canonical article.
    - Updated articles: use Edit to integrate new information, update frontmatter dates
    - Every article must link to at least one other via See Also
 
@@ -61,6 +64,7 @@ raw sources to update active articles.
    - `volatility:` is set to `hot`, `warm`, or `cold`
    - `verified:` is set to today's date
    - `confidence:` is set to `high`, `medium`, or `low`
+   - `title:` is a human-readable Korean title for Korean workspaces, unless the user explicitly requested another language.
 
    If any check fails, halt with: `Article <path>: missing required frontmatter (<field>). See references/compilation.md § Step 5 (write protocol) and references/wiki-structure.md § Volatility Classification.` This catches silent agent skips before lint has to catch them later. Do not "fix and continue" — stop, surface the failure, let the user re-run with awareness.
 

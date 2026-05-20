@@ -14,6 +14,8 @@ allowed-tools: Read, Glob, Grep, Bash(ls:*), Edit
 
 Answer the question in $ARGUMENTS using ONLY the knowledge in the wiki. Follow the Q&A protocol below.
 
+Korean by default: Answer in Korean unless the user explicitly asks for another language. Keep citations and file paths unchanged. If the wiki lacks evidence, say that in Korean and suggest what source to ingest.
+
 Inventory awareness: for factual questions, inventory is not evidence. Cite
 compiled wiki articles and raw sources, not operational inventory records. For
 meta-questions about candidates, backlogs, next actions, what to track, or

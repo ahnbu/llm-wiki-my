@@ -53,6 +53,8 @@ Read `wiki/_index.md` and category indexes. For each key concept:
 
 **For new outputs with binary artifacts:** If a new output will produce binary siblings (images, diagrams, CSVs, rendered screenshots, code files), create it inside `output/projects/<slug>/` from the start rather than scattering into `output/` root. The reason is colocation — relative asset paths only work when the markdown and its assets live in the same folder. See `references/projects.md` for the full rationale. If the user passed `--project <slug>` explicitly, write into that project folder. Otherwise prompt for a slug and goal and invoke `/wiki:project new` before writing the artifacts. Loose markdown outputs (no binary siblings) can still land flat in `output/` for backward compatibility.
 
+Korean by default: In Korean workspaces, compiled articles are written directly in Korean. The canonical `wiki/` article uses a Korean title, Korean filename, Korean section headings, Korean summary, and Korean body text unless the user explicitly asks for another language. Do not create a separate Korean export copy.
+
 **For new articles:**
 
 1. Write the abstract paragraph — what is this and why does it matter?

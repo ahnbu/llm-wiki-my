@@ -633,3 +633,75 @@ Expected: one concern only. SPEC 문서 변경과 코드 레포 변경을 같은
 - Codex 설치 대상과 `claude-plugin/` source of truth 혼동은 구현 원칙과 Task 7에 명시했다.
 - 새 cleanup 기능, ingest preview, CRUD/RUD UI, 강의 산출물 생성 기능은 계획에 포함하지 않았다.
 - 검증은 구조 테스트, sync 테스트, Codex runtime smoke, scope creep scan, security gate로 닫는다.
+
+## 구현 결과
+
+작성 시점: 2026-05-20 KST
+
+### 반영 완료
+
+| 항목 | 결과 | 확인 |
+|---|---|---|
+| 한국어 기본값 | ✅ 반영 | ingest/compile/query/output/lint 문서에 한국어 제목·본문·파일명 기본값을 반영했다. |
+| `.wiki` Git 포함 기본값 | ✅ 반영 | init/구조 문서에서 `.wiki/`를 기본 ignore 처리하지 않도록 수정했다. |
+| 기존 기능 유지 | ✅ 반영 | `/wiki:output`은 제거하지 않고, 산출물 언어·파일명 규칙만 한국어 기본값 영향을 받도록 했다. |
+| Codex/OpenCode mirror | ✅ 반영 | `claude-plugin/` 변경을 `plugins/llm-wiki/`, `plugins/llm-wiki-opencode/`로 동기화했다. |
+| 범위 통제 | ✅ 반영 | ingest preview, cleanup CRUD/RUD, PPT/worksheet generator는 구현하지 않았다. |
+| 테스트 보강 | ✅ 반영 | fork 정책 검증과 Windows CRLF 대응을 테스트에 추가했다. |
+
+### 검증 결과
+
+| 검증 | 결과 | 비고 |
+|---|---|---|
+| `bash tests/test-plugin-validate.sh` | ✅ 통과 | 91 passed, 0 failed |
+| `bash tests/test-structure.sh` | ✅ 통과 | 170 passed, 0 failed |
+| `bash tests/test-local-cli-lint.sh` | ✅ 통과 | 21 passed, 0 failed |
+| scope creep scan | ✅ 통과 | 금지 범위 문구 매치 없음 |
+| `bash tests/test-codex-sync.sh` | ⚠️ 보류 | 테스트가 `HEAD` 대비 mirror diff를 검사하므로, 현재 미커밋 구현 상태에서는 실패가 정상이다. 커밋 후 재실행해야 한다. |
+| `bash tests/test-opencode-sync.sh` | ⚠️ 보류 | Codex sync와 동일하게 커밋 후 재실행 대상이다. |
+| `bash tests/test-codex-runtime.sh` | ⚠️ 환경 이슈 | WSL Bash에서 Windows Codex 래퍼가 `node`를 못 찾는다. 임시 `node` shim 적용 후에는 Codex가 임시 HOME의 marketplace source를 읽지 못해 실패했다. 실제 설치 전환 단계에서 native Codex 환경 기준으로 재검증한다. |
+
+### 커밋 전 남은 일
+
+| 항목 | 상태 | 처리 기준 |
+|---|---|---|
+| 커밋 | ⚠️ 미수행 | 사용자 요청 시 `cp` 스킬로만 수행한다. |
+| sync 테스트 최종 통과 | ⚠️ 커밋 후 가능 | mirror 변경이 `HEAD`에 포함된 뒤 재실행한다. |
+| security gate | ⚠️ 커밋 흐름에서 수행 | staged 파일이 생긴 뒤 `precommit --repo D:/vibe-coding/llm-wiki-my --staged`로 실행한다. |
+| 실제 Codex 플러그인 전환 | ⚠️ 별도 실행 | 기존 marketplace 경로 확인 → upstream 비활성/제거 → local fork 등록 → `/plugins` 활성화 순서로 진행한다. |
+
+## done-check-lite 결과
+
+### 최종 판정
+
+| 항목 | 판정 | 근거 |
+|---|---|---|
+| 전체 상태 | ⚠️ 승인 필요 | 핵심 fork 요구사항은 반영됐지만, sync 최종 검증은 커밋 후에만 통과 가능하고 실제 Codex runtime 검증은 현재 WSL/Windows Codex 실행 환경에서 막혀 있다. |
+
+### 요구사항 대조표
+
+| 원래 요구사항 | 상태 | 구현 근거 | 검증 근거 | 비고 |
+|---|---|---|---|---|
+| nvk 플러그인을 fork해 바로 쓸 수 있게 핵심 이슈를 개선한다 | ✅ 완료 | `claude-plugin/commands/`, `references/`, `plugins/llm-wiki/` 변경 | `test-plugin-validate.sh`: 91 passed, 0 failed | 실제 Codex 활성화는 별도 전환 절차 필요 |
+| 산출물 기본값은 한국어로 한다 | ✅ 완료 | ingest/compile/query/output/lint 문서와 구조 문서에 한국어 기본값 반영 | fork policy checks 통과 | 별도 한국어 사본이 아니라 정본 기본값으로 반영 |
+| wiki 역할은 raw data distill로 제한한다 | ✅ 완료 | output 문서에서 기존 기능 유지, 강의 산출물 generator 추가 금지 | scope creep scan 매치 없음 | ingest preview/cleanup CRUD/RUD도 추가하지 않음 |
+| `.wiki/raw` 포함해 `.wiki`는 일단 Git 포함 기본값으로 둔다 | ✅ 완료 | `wiki.md`, `wiki-structure.md`, `AGENTS.md` 수정 | fork policy checks 통과 | 대용량/secret 예외는 문제 발생 시 별도 처리 |
+| 기존 플러그인 삭제/해제 후 fork 설치 프로세스를 계획문서와 README에 포함한다 | ✅ 완료 | README local install 섹션과 계획문서 Task 9 | 문서 확인 | 실제 제거/설치는 아직 실행하지 않음 |
+| 구현 결과를 계획문서에 업데이트한다 | ✅ 완료 | 본 문서 `구현 결과`, `done-check-lite 결과` 섹션 | 문서 확인 | 현재 상태와 보류 사유 포함 |
+| 계획의 검증 게이트를 모두 닫는다 | ⚠️ 승인 필요 | 핵심 로컬 테스트는 통과 | sync/runtime은 미종결 | 커밋 및 실제 Codex 전환 승인 필요 |
+
+### 미완료·승인 필요 항목
+
+| 항목 | 문제 | 필요한 다음 작업 |
+|---|---|---|
+| sync 최종 검증 | `test-codex-sync.sh`, `test-opencode-sync.sh`는 `HEAD` 기준 diff를 검사하므로 미커밋 상태에서는 실패한다. | 사용자가 커밋을 요청하면 `cp` 스킬로 커밋한 뒤 두 테스트를 재실행한다. |
+| Codex runtime 검증 | WSL Bash에서 Windows Codex 래퍼가 `node`를 찾지 못한다. 임시 shim 후에도 임시 HOME marketplace source 검증이 실패했다. | 실제 Codex 환경에서 fork 전환 절차를 실행한 뒤 native 환경 기준으로 재검증한다. |
+| security gate | 커밋 전 staged 파일이 아직 없으므로 precommit gate를 실행하지 않았다. | 커밋 요청 시 staged 상태에서 `security-gate.mjs precommit --repo D:/vibe-coding/llm-wiki-my --staged` 실행. |
+
+### 검증 근거
+
+| 구분 | 근거 |
+|---|---|
+| 실행한 검증 | `bash tests/test-plugin-validate.sh` → 91 passed, 0 failed; `bash tests/test-structure.sh` → 170 passed, 0 failed; `bash tests/test-local-cli-lint.sh` → 21 passed, 0 failed; scope creep scan → no matches |
+| 확인한 파일 | `AGENTS.md`, `README.md`, `claude-plugin/commands/*.md`, `claude-plugin/skills/wiki-manager/references/*.md`, `plugins/llm-wiki/**`, `plugins/llm-wiki-opencode/**`, `tests/*.sh` |
+| 커밋 | 없음. 현재 구현 변경은 working tree에 남아 있다. |

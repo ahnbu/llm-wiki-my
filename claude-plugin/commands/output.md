@@ -14,6 +14,8 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Bash(date:*), Bash(pyt
 
 Generate an output artifact from wiki content based on $ARGUMENTS.
 
+Korean by default: Preserve the existing output feature and output types. Do not add new lecture-template, PPT, PDF, worksheet, or storyline generators for this fork. When an artifact is generated from Korean wiki content, use Korean for the artifact title, frontmatter title, section headings, filename topic portion, and body text unless the user explicitly asks for another language.
+
 Inventory awareness: if the requested output is really a durable queue,
 candidate list, watch list, source backlog, or next-action table, recommend
 `/wiki:inventory` instead of creating another loose output. If an output report
@@ -81,7 +83,7 @@ When `--retardmax` is set:
 
 3. **Generate**: Create the artifact in the format specified for the output type. Draw domain content from the primary wiki and craft/technique guidance from `--with` wikis.
 
-3. **Save**: Write to `output/{type}-{topic-slug}-{YYYY-MM-DD}.md`. Follow core principle #9 (chunked writes): Write frontmatter + first section, then Edit to append remaining sections. With frontmatter:
+3. **Save**: Write to `output/{type}-{한국어-주제명}-{YYYY-MM-DD}.md` by default for Korean content, using the filename policy in `references/wiki-structure.md`. Follow core principle #9 (chunked writes): Write frontmatter + first section, then Edit to append remaining sections. With frontmatter:
    ```
    ---
    title: "Output Title"

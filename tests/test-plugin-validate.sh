@@ -14,6 +14,28 @@ REFERENCE_NAMES="archive audit command-prelude compilation datasets hub-resoluti
 log_pass() { PASS=$((PASS + 1)); TOTAL=$((TOTAL + 1)); printf "  \033[32mPASS\033[0m: %s\n" "$1"; }
 log_fail() { FAIL=$((FAIL + 1)); TOTAL=$((TOTAL + 1)); printf "  \033[31mFAIL\033[0m: %s — %s\n" "$1" "$2"; }
 
+assert_contains() {
+  file="$1"
+  pattern="$2"
+  message="$3"
+  if grep -Eq "$pattern" "$file"; then
+    log_pass "$message"
+  else
+    log_fail "$message" "missing pattern '$pattern' in $file"
+  fi
+}
+
+assert_not_contains() {
+  file="$1"
+  pattern="$2"
+  message="$3"
+  if grep -Eq "$pattern" "$file"; then
+    log_fail "$message" "unexpected pattern '$pattern' in $file"
+  else
+    log_pass "$message"
+  fi
+}
+
 echo "=== Plugin Validation ==="
 
 # plugin.json
@@ -33,7 +55,7 @@ echo ""
 echo "--- Command frontmatter ---"
 for cmd in "$PLUGIN_DIR"/commands/*.md; do
   basename=$(basename "$cmd")
-  if head -1 "$cmd" | grep -q "^---$"; then
+  if head -1 "$cmd" | tr -d '\r' | grep -q "^---$"; then
     log_pass "frontmatter in commands/$basename"
   else
     log_fail "no frontmatter in commands/$basename" "missing ---"
@@ -45,7 +67,7 @@ echo ""
 echo "--- Skill files ---"
 if [ -f "$PLUGIN_DIR/skills/wiki-manager/SKILL.md" ]; then
   log_pass "SKILL.md exists"
-  if head -1 "$PLUGIN_DIR/skills/wiki-manager/SKILL.md" | grep -q "^---$"; then
+  if head -1 "$PLUGIN_DIR/skills/wiki-manager/SKILL.md" | tr -d '\r' | grep -q "^---$"; then
     log_pass "SKILL.md has frontmatter"
   else
     log_fail "SKILL.md has no frontmatter" "missing ---"
@@ -74,6 +96,17 @@ if [ -f "$PROJECT_ROOT/AGENTS.md" ]; then
 else
   log_fail "AGENTS.md missing" "missing file"
 fi
+
+echo ""
+echo "--- ahnbu fork policy checks ---"
+assert_contains "$PLUGIN_DIR/commands/compile.md" "Korean by default|한국어" "compile command documents Korean article defaults"
+assert_contains "$PLUGIN_DIR/commands/query.md" "Korean by default|한국어" "query command documents Korean response defaults"
+assert_contains "$PLUGIN_DIR/commands/output.md" "Korean by default|한국어" "output command documents Korean artifact defaults"
+assert_contains "$PLUGIN_DIR/commands/ingest.md" "Korean filename|한국어 파일명|한글" "ingest command documents Korean filename defaults"
+assert_contains "$PLUGIN_DIR/commands/wiki.md" "keep .*\\.wiki.*Git|Git.*\\.wiki|Do not append .*\\.wiki" "wiki init documents .wiki Git inclusion"
+assert_not_contains "$PLUGIN_DIR/commands/wiki.md" "For local wikis .*: append .*\\.wiki/.*\\.gitignore" "wiki init no longer tells local users to ignore .wiki"
+assert_contains "$PLUGIN_DIR/skills/wiki-manager/references/wiki-structure.md" "Korean filename|한국어 파일명|한글" "wiki structure documents Korean filename policy"
+assert_contains "$PROJECT_ROOT/AGENTS.md" "keep .*\\.wiki.*Git|Git.*\\.wiki|Do not append .*\\.wiki" "portable protocol documents .wiki Git inclusion"
 
 # Codex mirror validation — the artifacts that Codex installs from this repo.
 # Drift between Claude source and this mirror is covered by test-codex-sync.sh;
@@ -134,12 +167,12 @@ echo ""
 echo "--- Codex skill files ---"
 if [ -f "$CODEX_SKILL/SKILL.md" ]; then
   log_pass "Codex SKILL.md exists"
-  if head -1 "$CODEX_SKILL/SKILL.md" | grep -q "^---$"; then
+  if head -1 "$CODEX_SKILL/SKILL.md" | tr -d '\r' | grep -q "^---$"; then
     log_pass "Codex SKILL.md has frontmatter"
   else
     log_fail "Codex SKILL.md has no frontmatter" "missing ---"
   fi
-  if grep -q "^name: wiki$" "$CODEX_SKILL/SKILL.md"; then
+  if grep -Eq $'^name: wiki\r?$' "$CODEX_SKILL/SKILL.md"; then
     log_pass "Codex SKILL.md uses the wiki skill name"
   else
     log_fail "Codex SKILL.md uses the wrong skill name" "expected 'name: wiki'"
@@ -189,6 +222,22 @@ if [ -L "$OC_REFS_LINK" ]; then
   else
     log_fail "OpenCode references symlink target does not exist" "$(readlink "$OC_REFS_LINK")"
   fi
+elif [ -f "$OC_REFS_LINK" ] && [ "$(cat "$OC_REFS_LINK")" = "../../../../claude-plugin/skills/wiki-manager/references" ]; then
+  # Windows checkouts can materialize symlinks as plain text link files.
+  log_pass "OpenCode references is a Git symlink placeholder file"
+  OC_REFS_TARGET="$PROJECT_ROOT/claude-plugin/skills/wiki-manager/references"
+  if [ -d "$OC_REFS_TARGET" ]; then
+    log_pass "OpenCode references placeholder target resolves"
+    for ref in $REFERENCE_NAMES; do
+      if [ -f "$OC_REFS_TARGET/${ref}.md" ]; then
+        log_pass "OpenCode references/$ref.md reachable via placeholder target"
+      else
+        log_fail "OpenCode references/$ref.md not reachable via placeholder target" "broken target"
+      fi
+    done
+  else
+    log_fail "OpenCode references placeholder target does not exist" "$OC_REFS_TARGET"
+  fi
 else
   log_fail "OpenCode references is not a symlink" "expected symlink to claude-plugin source"
 fi
@@ -198,7 +247,7 @@ echo ""
 echo "--- OpenCode skill files ---"
 if [ -f "$OPENCODE_SKILL/SKILL.md" ]; then
   log_pass "OpenCode SKILL.md exists"
-  if head -1 "$OPENCODE_SKILL/SKILL.md" | grep -q "^---$"; then
+  if head -1 "$OPENCODE_SKILL/SKILL.md" | tr -d '\r' | grep -q "^---$"; then
     log_pass "OpenCode SKILL.md has frontmatter"
   else
     log_fail "OpenCode SKILL.md has no frontmatter" "missing ---"

@@ -185,7 +185,7 @@ When `--inbox` is set and no `--wiki` was provided, classify items as a batch:
 
 ### For all sources
 
-1. Generate slug: `YYYY-MM-DD-descriptive-slug.md`
+1. Generate filename: `YYYY-MM-DD-한국어-요약명.md` by default. Korean filename policy: use Korean for human-facing filenames when the source title or user context is Korean. Allowed characters are Korean letters, ASCII letters and digits, `_`, `-`, and `.`. Use `_` for structural separation, `-` for word separation, remove forbidden characters, and add a short numeric suffix on collisions. Preserve existing raw filenames; this rule applies to new ingests.
 2. Write source file to `raw/{type}/` with proper frontmatter:
    ```
    ---
@@ -197,6 +197,7 @@ When `--inbox` is set and no `--wiki` was provided, classify items as a batch:
    summary: "2-3 sentence summary"
    ---
    ```
+   For Korean workspaces, write `title` and `summary` in Korean by default unless the source title is a fixed proper noun or the user explicitly asks for another language.
 3. Update `raw/{type}/_index.md`, `raw/_index.md`, and master `_index.md` (best-effort — if skipped or interrupted, the next read will rebuild from file frontmatter. See `references/indexing.md` Derived Index Protocol.)
 4. Append to `log.md`: `## [YYYY-MM-DD] ingest | Title (raw/type/slug.md)`
 7. Report: what was ingested, where saved, detected tags

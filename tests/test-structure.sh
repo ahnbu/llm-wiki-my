@@ -12,6 +12,11 @@ TOTAL=0
 
 log_pass() { PASS=$((PASS + 1)); TOTAL=$((TOTAL + 1)); printf "  \033[32mPASS\033[0m: %s\n" "$1"; }
 log_fail() { FAIL=$((FAIL + 1)); TOTAL=$((TOTAL + 1)); printf "  \033[31mFAIL\033[0m: %s — %s\n" "$1" "$2"; }
+yaml_value() {
+  local field="$1"
+  local file="$2"
+  grep "^${field}:" "$file" | head -1 | sed "s/${field}: *//" | tr -d '\r'
+}
 
 echo "=== Layer 1: Structural Validation ==="
 
@@ -34,6 +39,8 @@ done
 
 if [ -f "$GOLDEN/_index.md" ]; then log_pass "master _index.md exists"; else log_fail "master _index.md missing" "C1"; fi
 if [ -f "$GOLDEN/config.md" ]; then log_pass "config.md exists"; else log_fail "config.md missing" "C1"; fi
+if [ -d "$GOLDEN/inbox" ]; then log_pass "inbox exists"; else log_fail "inbox missing" "C1"; fi
+if [ -d "$GOLDEN/inbox/.processed" ]; then log_pass "inbox/.processed exists"; else log_fail "inbox/.processed missing" "C1"; fi
 
 echo ""
 echo "--- C2: Frontmatter (required fields) ---"
@@ -104,7 +111,7 @@ echo "--- C2: Enum validation ---"
 # type enum for raw sources
 while IFS= read -r -d '' file; do
   bn=$(basename "$file")
-  type_val=$(grep "^type:" "$file" | head -1 | sed 's/type: *//')
+  type_val=$(yaml_value "type" "$file")
   case "$type_val" in
     articles|papers|repos|notes|data) log_pass "valid type '$type_val' in $bn" ;;
     *) log_fail "invalid type '$type_val' in $bn" "C2 violation" ;;
@@ -114,7 +121,7 @@ done < <(find "$GOLDEN/raw" -name "*.md" -not -name "_index.md" -print0)
 # category enum for wiki articles
 while IFS= read -r -d '' file; do
   bn=$(basename "$file")
-  cat_val=$(grep "^category:" "$file" | head -1 | sed 's/category: *//')
+  cat_val=$(yaml_value "category" "$file")
   case "$cat_val" in
     concept|topic|reference) log_pass "valid category '$cat_val' in $bn" ;;
     *) log_fail "invalid category '$cat_val' in $bn" "C2 violation" ;;
@@ -124,19 +131,19 @@ done < <(find "$GOLDEN/wiki" -name "*.md" -not -name "_index.md" -print0)
 # kind/status/priority enums for inventory records
 while IFS= read -r -d '' file; do
   bn=$(basename "$file")
-  kind_val=$(grep "^kind:" "$file" | head -1 | sed 's/kind: *//')
+  kind_val=$(yaml_value "kind" "$file")
   case "$kind_val" in
     item|ingest-candidate|entity|corpus|question|task|artifact|watch) log_pass "valid kind '$kind_val' in $bn" ;;
     *) log_fail "invalid kind '$kind_val' in $bn" "C16 violation" ;;
   esac
 
-  status_val=$(grep "^status:" "$file" | head -1 | sed 's/status: *//')
+  status_val=$(yaml_value "status" "$file")
   case "$status_val" in
     proposed|active|blocked|ingested|superseded|archived) log_pass "valid status '$status_val' in $bn" ;;
     *) log_fail "invalid status '$status_val' in $bn" "C16 violation" ;;
   esac
 
-  priority_val=$(grep "^priority:" "$file" | head -1 | sed 's/priority: *//')
+  priority_val=$(yaml_value "priority" "$file")
   case "$priority_val" in
     p0|p1|p2|p3|p4) log_pass "valid priority '$priority_val' in $bn" ;;
     *) log_fail "invalid priority '$priority_val' in $bn" "C16 violation" ;;
@@ -146,19 +153,19 @@ done < <(find "$GOLDEN/inventory/items" "$GOLDEN/inventory/candidates" "$GOLDEN/
 # status/storage/schema_status enums for dataset manifests
 while IFS= read -r -d '' file; do
   bn=$(basename "$(dirname "$file")")/$(basename "$file")
-  status_val=$(grep "^status:" "$file" | head -1 | sed 's/status: *//')
+  status_val=$(yaml_value "status" "$file")
   case "$status_val" in
     proposed|active|external|archived|unavailable) log_pass "valid dataset status '$status_val' in $bn" ;;
     *) log_fail "invalid dataset status '$status_val' in $bn" "C17 violation" ;;
   esac
 
-  storage_val=$(grep "^storage:" "$file" | head -1 | sed 's/storage: *//')
+  storage_val=$(yaml_value "storage" "$file")
   case "$storage_val" in
     local|remote|external|hybrid) log_pass "valid storage '$storage_val' in $bn" ;;
     *) log_fail "invalid storage '$storage_val' in $bn" "C17 violation" ;;
   esac
 
-  schema_val=$(grep "^schema_status:" "$file" | head -1 | sed 's/schema_status: *//')
+  schema_val=$(yaml_value "schema_status" "$file")
   case "$schema_val" in
     unknown|inferred|declared|validated) log_pass "valid schema_status '$schema_val' in $bn" ;;
     *) log_fail "invalid schema_status '$schema_val' in $bn" "C17 violation" ;;
@@ -168,7 +175,7 @@ done < <(find "$GOLDEN/datasets" -name "MANIFEST.md" -print0)
 # confidence enum
 while IFS= read -r -d '' file; do
   bn=$(basename "$file")
-  conf_val=$(grep "^confidence:" "$file" | head -1 | sed 's/confidence: *//')
+  conf_val=$(yaml_value "confidence" "$file")
   case "$conf_val" in
     high|medium|low) log_pass "valid confidence '$conf_val' in $bn" ;;
     *) log_fail "invalid confidence '$conf_val' in $bn" "C2 violation" ;;
@@ -179,7 +186,7 @@ done < <(find "$GOLDEN/wiki" -name "*.md" -not -name "_index.md" -print0)
 while IFS= read -r -d '' file; do
   bn=$(basename "$file")
   # Check volatility field (new schema)
-  vol=$(grep "^volatility:" "$file" | head -1 | sed 's/volatility: *//')
+  vol=$(yaml_value "volatility" "$file")
   if [ -n "$vol" ]; then
     case "$vol" in
       hot|warm|cold) log_pass "valid volatility '$vol' in $bn" ;;
@@ -258,7 +265,7 @@ check_sources() {
       fi
       if $in_sources; then
         if echo "$line" | grep -q "^  - "; then
-          ref=$(echo "$line" | sed 's/^  - //' | sed 's/^"//;s/"$//;s/^'\''//;s/'\''$//')
+          ref=$(echo "$line" | sed 's/^  - //' | tr -d '\r' | sed 's/^"//;s/"$//;s/^'\''//;s/'\''$//')
           case "$ref" in
             http://*|https://*) log_pass "$label external source allowed: $ref (in $bn)" ;;
             /*)
@@ -334,7 +341,7 @@ echo "--- C11: File placement ---"
 
 while IFS= read -r -d '' file; do
   bn=$(basename "$file")
-  type_val=$(grep "^type:" "$file" | head -1 | sed 's/type: *//')
+  type_val=$(yaml_value "type" "$file")
   parent_dir=$(basename "$(dirname "$file")")
   if [ "$type_val" = "$parent_dir" ]; then
     log_pass "placement correct: $bn (type=$type_val)"
@@ -345,7 +352,7 @@ done < <(find "$GOLDEN/raw" -name "*.md" -not -name "_index.md" -print0)
 
 while IFS= read -r -d '' file; do
   bn=$(basename "$file")
-  cat_val=$(grep "^category:" "$file" | head -1 | sed 's/category: *//')
+  cat_val=$(yaml_value "category" "$file")
   parent_dir=$(basename "$(dirname "$file")")
   expected="${cat_val}s"
   if [ "$expected" = "$parent_dir" ]; then
@@ -359,7 +366,7 @@ while IFS= read -r -d '' file; do
   bn=$(basename "$file")
   parent_dir=$(basename "$(dirname "$file")")
   [ "$parent_dir" = "views" ] && continue
-  kind_val=$(grep "^kind:" "$file" | head -1 | sed 's/kind: *//')
+  kind_val=$(yaml_value "kind" "$file")
   case "$kind_val" in
     item) expected="items" ;;
     entity) expected="entities" ;;
@@ -376,7 +383,7 @@ done < <(find "$GOLDEN/inventory" -name "*.md" -not -name "_index.md" -print0)
 
 while IFS= read -r -d '' manifest; do
   slug=$(basename "$(dirname "$manifest")")
-  manifest_id=$(grep "^dataset_id:" "$manifest" | head -1 | sed 's/dataset_id: *//')
+  manifest_id=$(yaml_value "dataset_id" "$manifest")
   if [ "$slug" = "$manifest_id" ]; then
     log_pass "placement correct: $slug/MANIFEST.md (dataset_id=$manifest_id)"
   else

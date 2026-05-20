@@ -153,7 +153,7 @@ IMPORTANT: Only auto-fix issues with clear, unambiguous fixes — missing index 
 
 ### Report
 
-Present the lint report in the format specified in `references/linting.md`, including the **Projects**, **Project Candidates**, **Inventory**, **Datasets**, and **File Placement & Schema** sections. **Lead every user-visible line with a plain-English description of what happened — never with a check code (C1, C8c, etc.).** Check codes are internal identifiers for developers; humans reading the report need to see what was found and what was fixed, not which rule triggered it.
+Present the lint report in Korean by default, using the format specified in `references/linting.md`, including the **Projects**, **Project Candidates**, **Inventory**, **Datasets**, and **File Placement & Schema** sections. Lead every user-visible line with a plain-language Korean description of what happened; never lead with a check code (C1, C8c, etc.). Check codes are internal identifiers for developers.
 
 When listing a recommended fix priority, describe the action in human terms:
 - Good: `Migrate 3 legacy project manifests (_project.md → WHY.md)`

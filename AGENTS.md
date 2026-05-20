@@ -94,7 +94,7 @@ All content lives here. One topic per wiki. Isolated indexes, focused queries.
 
 ### Local Wiki (.wiki/)
 
-Same structure as a topic wiki but at `<project>/.wiki/`. Add `.wiki/` to `.gitignore`.
+Same structure as a topic wiki but at `<project>/.wiki/`. For this fork, keep `.wiki/` Git-trackable by default; do not append `.wiki/` to `.gitignore` during init.
 
 ## Core Principles
 

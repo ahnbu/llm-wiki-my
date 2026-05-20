@@ -492,7 +492,7 @@ Validates the hub-level archive lifecycle described in `archive.md`.
 
 ## Report Format
 
-**User-facing output must lead with plain-English descriptions, not check codes.** The C-codes (C1, C8c, C11, etc.) are internal identifiers for cross-referencing between this file and `commands/lint.md`. They must never appear as the leading text in any line the user sees. If a code is useful for debugging, append it in parentheses at the end — but prefer omitting it entirely.
+**User-facing output must lead with plain-language Korean descriptions by default, not check codes.** If the user explicitly requests another language, use that language while keeping check codes out of the leading text. The C-codes (C1, C8c, C11, etc.) are internal identifiers for cross-referencing between this file and `commands/lint.md`. They must never appear as the leading text in any line the user sees. If a code is useful for debugging, append it in parentheses at the end — but prefer omitting it entirely.
 
 ```markdown
 ## Wiki Lint Report — YYYY-MM-DD

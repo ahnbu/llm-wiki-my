@@ -51,6 +51,8 @@ Install from a local checkout with the managed bootstrap helper:
 ./scripts/bootstrap-codex-plugin.sh --scope user --verify
 ```
 
+For fork testing, do not keep the upstream `nvk/llm-wiki` plugin and this fork enabled at the same time. Disable or remove the upstream `llm-wiki` marketplace entry first, then install this local checkout and enable the fork in `/plugins`.
+
 Or register the local checkout manually:
 ```bash
 codex plugin marketplace add /absolute/path/to/llm-wiki
