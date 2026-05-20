@@ -111,6 +111,22 @@ skill_path.write_text(text)
 # runtime-neutral wording ("the agent") so they read correctly under all runtimes.
 PY
 
+python3 - "$TARGET_PLUGIN" <<'PY'
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+for path in root.rglob("*"):
+    if not path.is_file():
+        continue
+    if path.suffix not in {".md", ".json", ".yaml", ".yml"}:
+        continue
+    data = path.read_bytes()
+    normalized = data.replace(b"\r\n", b"\n")
+    if normalized != data:
+        path.write_bytes(normalized)
+PY
+
 echo "Synced OpenCode plugin skill from Claude source."
 echo "Source: $SOURCE_SKILL"
 echo "Target: $TARGET_SKILL"

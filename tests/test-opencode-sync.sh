@@ -13,7 +13,7 @@ cd "$ROOT"
 
 ./scripts/sync-opencode-plugin.sh >/dev/null
 
-if ! git diff --quiet HEAD -- plugins/llm-wiki-opencode/; then
+if ! git -c core.autocrlf=true diff --quiet HEAD -- plugins/llm-wiki-opencode/; then
   cat >&2 <<'MSG'
 FAIL: OpenCode plugin mirror is out of sync with claude-plugin/skills/wiki-manager/.
 

@@ -210,6 +210,22 @@ codex["author"] = {
 codex_manifest.write_text(json.dumps(codex, indent=2) + "\n")
 PY
 
+python3 - "$TARGET_PLUGIN" <<'PY'
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+for path in root.rglob("*"):
+    if not path.is_file():
+        continue
+    if path.suffix not in {".md", ".json", ".yaml", ".yml"}:
+        continue
+    data = path.read_bytes()
+    normalized = data.replace(b"\r\n", b"\n")
+    if normalized != data:
+        path.write_bytes(normalized)
+PY
+
 echo "Synced Codex plugin skill from Claude source."
 echo "Source: $SOURCE_SKILL"
 echo "Target: $TARGET_SKILL"

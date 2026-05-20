@@ -15,7 +15,7 @@ cd "$ROOT"
 
 ./scripts/sync-codex-plugin.sh >/dev/null
 
-if ! git diff --quiet HEAD -- plugins/; then
+if ! git -c core.autocrlf=true diff --quiet HEAD -- plugins/llm-wiki/; then
   cat >&2 <<'MSG'
 FAIL: Codex plugin mirror is out of sync with claude-plugin/skills/wiki-manager/.
 
