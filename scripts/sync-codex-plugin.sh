@@ -205,8 +205,11 @@ codex["repository"] = claude.get("repository", codex.get("repository", "https://
 author = claude.get("author", {})
 codex["author"] = {
     "name": author.get("name", "nvk"),
-    "url": "https://github.com/nvk",
+    "url": author.get("url", "https://github.com/nvk"),
 }
+codex.setdefault("interface", {})
+codex["interface"]["developerName"] = author.get("name", codex["interface"].get("developerName", "nvk"))
+codex["interface"]["websiteURL"] = codex["homepage"]
 codex_manifest.write_text(json.dumps(codex, indent=2) + "\n")
 PY
 

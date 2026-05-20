@@ -3,11 +3,11 @@
   "version": "0.9.0",
   "description": "LLM-compiled knowledge bases for Codex. Build topic-scoped wikis, archive old topics, track inventory, index datasets, ingest sources and external collections, compile articles, run truth-seeking audits, query, lint, research, and generate outputs.",
   "author": {
-    "name": "nvk",
-    "url": "https://github.com/nvk"
+    "name": "ahnbu",
+    "url": "https://github.com/ahnbu"
   },
-  "homepage": "https://github.com/nvk/llm-wiki",
-  "repository": "https://github.com/nvk/llm-wiki",
+  "homepage": "https://github.com/ahnbu/llm-wiki-my",
+  "repository": "https://github.com/ahnbu/llm-wiki-my",
   "license": "MIT",
   "keywords": [
     "wiki",
@@ -24,16 +24,16 @@
   ],
   "skills": "./skills/",
   "interface": {
-    "displayName": "LLM Wiki",
+    "displayName": "LLM Wiki My",
     "shortDescription": "Build, archive, inventory, index data, audit, and maintain research wikis",
     "longDescription": "Bundle the llm-wiki workflow for Codex: initialize a wiki, archive old topics so they stay preserved but quiet, track inventory, index large datasets without copying them into the wiki, ingest sources and external collections, compile articles, audit outputs and provenance, query knowledge, lint structure, run research, and generate outputs.",
-    "developerName": "nvk",
+    "developerName": "ahnbu",
     "category": "Productivity",
     "capabilities": [
       "Read",
       "Write"
     ],
-    "websiteURL": "https://github.com/nvk/llm-wiki",
+    "websiteURL": "https://github.com/ahnbu/llm-wiki-my",
     "defaultPrompt": [
       "Research a new topic and compile it into a wiki.",
       "Archive an old topic wiki so it stays preserved but out of default context.",

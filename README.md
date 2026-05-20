@@ -51,11 +51,11 @@ Install from a local checkout with the managed bootstrap helper:
 ./scripts/bootstrap-codex-plugin.sh --scope user --verify
 ```
 
-For fork testing, do not keep the upstream `nvk/llm-wiki` plugin and this fork enabled at the same time. Disable or remove the upstream `llm-wiki` marketplace entry first, then install this local checkout and enable the fork in `/plugins`.
+For fork testing, keep the upstream `nvk/llm-wiki` marketplace disabled or removed. This fork registers as `llm-wiki-my`, appears as "LLM Wiki My" in `/plugins`, and still exposes the `@wiki` entry point.
 
 Or register the local checkout manually:
 ```bash
-codex plugin marketplace add /absolute/path/to/llm-wiki
+codex plugin marketplace add /absolute/path/to/llm-wiki-my
 ```
 
 Canonical explicit invocation:
@@ -68,16 +68,16 @@ Canonical explicit invocation:
 
 Upgrade:
 ```bash
-codex plugin marketplace upgrade llm-wiki
+codex plugin marketplace upgrade llm-wiki-my
 ```
 
 Remove:
 ```bash
-codex plugin marketplace remove llm-wiki
+codex plugin marketplace remove llm-wiki-my
 ```
 
 Troubleshooting:
-- After installing the marketplace, open `/plugins` in Codex and enable "LLM Wiki" — first install requires the interactive enable step.
+- After installing the marketplace, open `/plugins` in Codex and enable "LLM Wiki My" — first install requires the interactive enable step.
 - `@wiki` is the canonical explicit entry point in Codex. Natural-language wiki requests can still auto-activate the skill.
 - Restart Codex after changing config if an existing session does not pick up the new plugin state.
 - If you run Codex under a sandbox wrapper like `nono`, see [Nono Sandbox Permissions](#nono-sandbox-permissions) — Codex needs r+w to `$HOME/.codex` for plugin install.

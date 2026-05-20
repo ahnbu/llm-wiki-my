@@ -5,14 +5,14 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCOPE="project"
 PROJECT_ROOT="${PWD}"
 USER_HOME="${HOME}"
-MARKETPLACE_NAME="llm-wiki"
+MARKETPLACE_NAME="llm-wiki-my"
 PLUGIN_KEY="wiki@${MARKETPLACE_NAME}"
 
 usage() {
   cat <<'EOF'
 Usage: ./scripts/verify-codex-plugin.sh [options]
 
-Verify that Codex resolves @wiki to this repo's generated Codex wiki skill.
+Verify that Codex resolves @wiki to the installed cache for this local fork.
 
 Options:
   --scope project|user   Verify project or user install (default: project)
@@ -61,11 +61,25 @@ esac
 
 PROJECT_ROOT="$(cd "$PROJECT_ROOT" && pwd)"
 USER_HOME="$(cd "$USER_HOME" && pwd)"
-EXPECTED_SKILL_PATH="$ROOT/plugins/llm-wiki/skills/wiki/SKILL.md"
+EXPECTED_CACHE_FRAGMENT=".codex/plugins/cache/${MARKETPLACE_NAME}"
 TMP_OUTPUT="$(mktemp)"
 PROBE_DIR="$ROOT/.tmp/codex-runtime-probe"
 USER_CONFIG="$USER_HOME/.codex/config.toml"
 TARGET_CONFIG=""
+normalize_path() {
+  python3 - "$1" <<'PY'
+import sys
+
+path = sys.argv[1].strip()
+if path.startswith("\\\\?\\"):
+    path = path[4:]
+path = path.replace("\\", "/")
+if len(path) > 7 and path.startswith("/mnt/") and path[5].isalpha() and path[6] == "/":
+    path = f"{path[5]}:/{path[7:]}"
+print(path.rstrip("/").lower())
+PY
+}
+ROOT_NORM="$(normalize_path "$ROOT")"
 if [[ "$SCOPE" == "project" ]]; then
   TARGET_CONFIG="$PROJECT_ROOT/.codex/config.toml"
 else
@@ -93,14 +107,20 @@ config = Path(sys.argv[1])
 marketplace = re.escape(sys.argv[2])
 text = config.read_text()
 match = re.search(
-    rf'(?ms)^\[marketplaces\.{marketplace}\]\n.*?^source = "(.*?)"$',
+    rf'(?ms)^\[marketplaces\.{marketplace}\]\n.*?^source = ([\'"])(.*?)\1$',
     text,
 )
-print(match.group(1) if match else "")
+source = match.group(2) if match else ""
+if source.startswith("\\\\?\\"):
+    source = source[4:]
+source = source.replace("\\", "/")
+if len(source) > 7 and source.startswith("/mnt/") and source[5].isalpha() and source[6] == "/":
+    source = f"{source[5]}:/{source[7:]}"
+print(source.rstrip("/").lower())
 PY
 )"
 
-if [[ "$MARKETPLACE_SOURCE" != "$ROOT" ]]; then
+if [[ "$MARKETPLACE_SOURCE" != "$ROOT_NORM" ]]; then
   echo "Codex marketplace '${MARKETPLACE_NAME}' does not point at this repo." >&2
   if [[ -n "$MARKETPLACE_SOURCE" ]]; then
     echo "Configured source:" >&2
@@ -109,7 +129,7 @@ if [[ "$MARKETPLACE_SOURCE" != "$ROOT" ]]; then
     echo "Configured source: <missing>" >&2
   fi
   echo "Expected source:" >&2
-  echo "  $ROOT" >&2
+  echo "  $ROOT_NORM" >&2
   echo "Run ./scripts/bootstrap-codex-plugin.sh with a clean Codex home or remove the conflicting marketplace first." >&2
   exit 1
 fi
@@ -136,10 +156,10 @@ else
   HOME="$USER_HOME" codex -C "$PROBE_DIR" debug prompt-input '@wiki test' >"$TMP_OUTPUT"
 fi
 
-if grep -Fq 'wiki:wiki' "$TMP_OUTPUT" && grep -Fq "$EXPECTED_SKILL_PATH" "$TMP_OUTPUT"; then
-  echo "OK: Codex resolves @wiki from this repo."
-  echo "Skill path:"
-  echo "  $EXPECTED_SKILL_PATH"
+if grep -Fq 'wiki:wiki' "$TMP_OUTPUT" && grep -Fq "$EXPECTED_CACHE_FRAGMENT" "$TMP_OUTPUT"; then
+  echo "OK: Codex resolves @wiki from this local fork marketplace."
+  echo "Expected cache fragment:"
+  echo "  $EXPECTED_CACHE_FRAGMENT"
   exit 0
 fi
 
@@ -155,12 +175,12 @@ PY
 )"
 
 if [[ -n "$ACTUAL_SKILL_PATH" ]]; then
-  echo "FAIL: Codex resolved @wiki, but not from this repo." >&2
+  echo "FAIL: Codex resolved @wiki, but not from this local fork marketplace." >&2
   echo "Resolved skill path:" >&2
   echo "  $ACTUAL_SKILL_PATH" >&2
-  echo "Expected skill path:" >&2
-  echo "  $EXPECTED_SKILL_PATH" >&2
-  echo "This usually means another Codex home already owns the 'llm-wiki-local' marketplace." >&2
+  echo "Expected cache fragment:" >&2
+  echo "  $EXPECTED_CACHE_FRAGMENT" >&2
+  echo "This usually means another Codex home already owns the '${MARKETPLACE_NAME}' marketplace." >&2
   exit 1
 fi
 
@@ -169,11 +189,11 @@ echo "The marketplace and config are present, but Codex may still require the in
 echo >&2
 echo "Next step:" >&2
 echo "  1. Start Codex with HOME set to this Codex home (if non-default)." >&2
-echo "  2. Open /plugins and enable 'LLM Wiki'." >&2
+echo "  2. Open /plugins and enable 'LLM Wiki My'." >&2
 echo "  3. Restart Codex if needed, then rerun this verify script." >&2
 echo >&2
-echo "Expected skill path once active:" >&2
-echo "  $EXPECTED_SKILL_PATH" >&2
+echo "Expected cache fragment once active:" >&2
+echo "  $EXPECTED_CACHE_FRAGMENT" >&2
 echo >&2
 echo "Last 40 lines of prompt-input output:" >&2
 tail -40 "$TMP_OUTPUT" >&2 || true

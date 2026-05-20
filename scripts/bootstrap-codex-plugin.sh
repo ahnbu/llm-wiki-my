@@ -7,7 +7,7 @@ PROJECT_ROOT="${PWD}"
 USER_HOME="${HOME}"
 PRINT_ONLY=0
 VERIFY=0
-MARKETPLACE_NAME="llm-wiki"
+MARKETPLACE_NAME="llm-wiki-my"
 PLUGIN_KEY="wiki@${MARKETPLACE_NAME}"
 
 usage() {
@@ -81,6 +81,20 @@ fi
 PROJECT_ROOT="$(cd "$PROJECT_ROOT" && pwd)"
 USER_HOME="$(cd "$USER_HOME" && pwd)"
 USER_CONFIG="$USER_HOME/.codex/config.toml"
+normalize_path() {
+  python3 - "$1" <<'PY'
+import sys
+
+path = sys.argv[1].strip()
+if path.startswith("\\\\?\\"):
+    path = path[4:]
+path = path.replace("\\", "/")
+if len(path) > 7 and path.startswith("/mnt/") and path[5].isalpha() and path[6] == "/":
+    path = f"{path[5]}:/{path[7:]}"
+print(path.rstrip("/").lower())
+PY
+}
+ROOT_NORM="$(normalize_path "$ROOT")"
 
 MANAGED_BLOCK="$(python3 - "$PLUGIN_KEY" <<'PY'
 import sys
@@ -119,17 +133,23 @@ if not config.exists():
 
 text = config.read_text()
 match = re.search(
-    rf'(?ms)^\[marketplaces\.{marketplace}\]\n.*?^source = "(.*?)"$',
+    rf'(?ms)^\[marketplaces\.{marketplace}\]\n.*?^source = ([\'"])(.*?)\1$',
     text,
 )
-print(match.group(1) if match else "")
+source = match.group(2) if match else ""
+if source.startswith("\\\\?\\"):
+    source = source[4:]
+source = source.replace("\\", "/")
+if len(source) > 7 and source.startswith("/mnt/") and source[5].isalpha() and source[6] == "/":
+    source = f"{source[5]}:/{source[7:]}"
+print(source.rstrip("/").lower())
 PY
 )"
 
 if [[ -z "$MARKETPLACE_SOURCE" ]]; then
   HOME="$USER_HOME" codex plugin marketplace add "$ROOT"
 else
-  if [[ "$MARKETPLACE_SOURCE" != "$ROOT" ]]; then
+  if [[ "$MARKETPLACE_SOURCE" != "$ROOT_NORM" ]]; then
     echo "Codex marketplace '${MARKETPLACE_NAME}' already points at:" >&2
     echo "  $MARKETPLACE_SOURCE" >&2
     echo "This helper will not overwrite another checkout automatically." >&2
@@ -153,8 +173,8 @@ from pathlib import Path
 
 target = Path(sys.argv[1])
 block = sys.argv[2]
-begin = "# BEGIN llm-wiki Codex bootstrap"
-end = "# END llm-wiki Codex bootstrap"
+begin = "# BEGIN llm-wiki-my Codex bootstrap"
+end = "# END llm-wiki-my Codex bootstrap"
 managed = f"{begin}\n{block}\n{end}\n"
 
 if target.exists():
