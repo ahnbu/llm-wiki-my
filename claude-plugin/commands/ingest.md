@@ -1,6 +1,6 @@
 ---
 description: "Ingest source material into an active wiki. Accepts URLs, file paths, PDFs, freeform text, or processes the inbox. Supports tweets via Grok MCP."
-argument-hint: "<url|filepath|\"text\"> [--type articles|papers|repos|notes|data] [--title \"Title\"] [--inbox] [--keep] [--wiki <name>] [--local] [--auto-classify] [--new-topic <name>] [--project <slug>] [--include-archived]"
+argument-hint: "<url|filepath|\"text\"> [--type articles|papers|repos|notes|data] [--title \"Title\"] [--source-key <short-key>] [--split-heading <level>] [--inbox] [--keep] [--wiki <name>] [--local] [--auto-classify] [--new-topic <name>] [--project <slug>] [--include-archived]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Bash(wc:*), Bash(date:*), Bash(mv:*), Bash(mkdir:*), Bash(basename:*), Bash(file:*), Bash(curl:*), Bash(mktemp:*), Bash(rm:*), Bash(pdftotext:*), Bash(python3:*), WebFetch, WebSearch
 ---
 
@@ -185,7 +185,20 @@ When `--inbox` is set and no `--wiki` was provided, classify items as a batch:
 
 ### For all sources
 
-1. Generate filename: `YYYY-MM-DD-한국어-요약명.md` by default. Korean filename policy: use Korean for human-facing filenames when the source title or user context is Korean. Allowed characters are Korean letters, ASCII letters and digits, `_`, `-`, and `.`. Use `_` for structural separation, `-` for word separation, remove forbidden characters, and add a short numeric suffix on collisions. Preserve existing raw filenames; this rule applies to new ingests.
+### Book and long Markdown split
+
+If `--split-heading <level>` is present, treat the input as one long Markdown source that should be split into multiple immutable raw sources before compilation. Use `scripts/split-markdown-source.mjs`; do not manually create split raw files.
+
+- `level` must be an integer from 1 to 6.
+- Use `notes` by default for books and chapters, storing generated files under `raw/notes/` with `type: notes`. If the user explicitly passes another valid `--type`, honor that type, but do not create `book`, `books`, or `raw/books/`.
+- This option is deterministic for Markdown files. Do not infer a PDF or EPUB table of contents in this workflow.
+- First run `node scripts/split-markdown-source.mjs --wiki <wiki-root> --source <path> --title "<title>" --source-key "<short-key>" --type <type> --split-heading <level> --dry-run`.
+- Review the generated mapping and stop if the user asked to inspect it before writing.
+- Run the same command with `--apply` to create raw files.
+- When splitting below chapter level, preserve the nearest parent heading in frontmatter as `split_parent_heading`, for example `Chapter 01. 일잘러의 세상이 흔들렸다`. Do not include the parent heading text in every split body unless it is needed for readability.
+- After script output, verify the created files, update or rebuild indexes if needed, append the ingest log entry, and report file paths.
+
+1. Generate filename: `YYYYMMDD_NN_한국어-요약명.md` by default. Use the KST date for `YYYYMMDD`. Generate `NN` by scanning the target `raw/{type}/` directory for existing files that start with the same date and taking the next 2-digit sequence. Use Korean for human-facing filenames when the source title or user context is Korean. Allowed characters are Korean letters, ASCII letters and digits, `_`, `-`, and `.`. Use `_` for structural separation such as date, sequence, source key, and part number; use `-` only inside the human title when useful. Remove forbidden characters and increment `NN` on collisions. Preserve existing raw filenames; this rule applies to new ingests only.
 2. Write source file to `raw/{type}/` with proper frontmatter:
    ```
    ---

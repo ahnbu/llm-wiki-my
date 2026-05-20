@@ -151,6 +151,12 @@ For each fixable issue, apply the auto-fix from the rules table in `references/l
 
 IMPORTANT: Only auto-fix issues with clear, unambiguous fixes — missing index entries, dead index links, broken stats, legacy `_project.md` → `WHY.md` migration (C8c), stale `output/_index.md` when `projects/` exists, safe legacy frontmatter repairs (C13/C15), fuzzy raw-source refs that resolve to exactly one file, files in the wrong canonical `raw/` or `wiki/` directory (C11), missing indexes inside existing inventory or dataset layers (C16/C17), explicit uncompiled-source coverage references, etc. Do NOT auto-fix content quality issues. Do NOT create `WHY.md` with placeholder goals (C8a is warn-only — manufactured rationale is worse than the missing file). Do NOT create a completely absent optional inventory or dataset tree just to make placeholders. Do NOT move files into projects — C9 candidates are human-authored via `/wiki:project new` + `/wiki:project add`. Do NOT migrate output artifacts into inventory or dataset records — C16/C17 migration is explicit via `/wiki:inventory migrate-output --apply` or `/wiki:dataset migrate-output --apply`. Never auto-delete unknown directories (C12) — warn only. On slug collisions during a C11 placement move, skip and warn. Do NOT rewrite article bodies except for explicitly requested recompilation.
 
+If legacy raw filenames such as `YYYY-MM-DD-slug.md` are found, do not rename
+them during ordinary lint repair. Report them as migration candidates and
+suggest running `node scripts/migrate-raw-filenames.mjs --wiki <wiki-root>
+--dry-run`. Apply mode requires explicit user approval because it rewrites raw
+paths referenced from `wiki/`, `output/`, indexes, and log entries.
+
 ### Report
 
 Present the lint report in Korean by default, using the format specified in `references/linting.md`, including the **Projects**, **Project Candidates**, **Inventory**, **Datasets**, and **File Placement & Schema** sections. Lead every user-visible line with a plain-language Korean description of what happened; never lead with a check code (C1, C8c, etc.). Check codes are internal identifiers for developers.

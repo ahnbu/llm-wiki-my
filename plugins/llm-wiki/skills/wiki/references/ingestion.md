@@ -14,6 +14,11 @@ Ingestion converts external material into a standardized raw source file in the 
 | notes | raw/notes/ | Freeform text, tweets, no URL |
 | data | raw/data/ | small .csv, .json, .tsv URLs or files, dataset references |
 
+Books and book chapters do not introduce a separate raw type in this fork. Store
+chapter-like local Markdown or text under `raw/notes/` with `type: notes` unless
+the user explicitly chooses another existing raw type. Do not create
+`raw/books/`, `type: book`, or `type: books`.
+
 If the data is large, mutable, remote, sensitive, or better queried in its
 native format, use the dataset registry (`references/datasets.md`) instead of
 copying it into `raw/data/`.
@@ -263,6 +268,81 @@ After collection ingestion, compile selectively:
    csv-messages` when the user wants one source per row/message
 6. Images → create a metadata stub noting the image path and any visible content description
 
+### Book and Long Markdown Split
+
+Use this only when the user passes `--split-heading <level>`. The split itself
+is performed by `scripts/split-markdown-source.mjs`; the agent verifies and
+indexes the result.
+
+1. Run dry-run:
+
+   ```powershell
+   node scripts/split-markdown-source.mjs --wiki <wiki-root> --source <file.md> --title "<title>" --source-key "<short-key>" --type notes --split-heading <level> --dry-run
+   ```
+
+2. Confirm the output mapping.
+3. Run apply:
+
+   ```powershell
+   node scripts/split-markdown-source.mjs --wiki <wiki-root> --source <file.md> --title "<title>" --source-key "<short-key>" --type notes --split-heading <level> --apply
+   ```
+
+4. Verify every generated file exists under `raw/notes/`.
+5. Update `raw/notes/_index.md`, `raw/_index.md`, and master `_index.md`.
+6. Append one log entry summarizing the split batch, for example `## [YYYY-MM-DD] ingest | Split Book Title into 12 notes (raw/notes/20260520_01_...)`.
+7. Use `type: notes` by default. Do not create `book`, `books`, or `raw/books/`.
+8. The script adds optional split provenance frontmatter:
+
+   ```yaml
+   book_title: "Full book title"
+   content_format: markdown
+   split_source: "original filepath or URL"
+   split_heading_level: 3
+   split_part_index: 1
+   split_part_total: 12
+   split_heading: "Chapter subheading"
+   split_parent_heading: "Chapter 01. Parent heading"
+   ```
+
+#### Example: split below chapter level
+
+For a book file with this structure:
+
+```markdown
+# IT 기획자에서 프로덕트 오너로 점프하기
+## 프롤로그
+## Chapter 01. 일잘러의 세상이 흔들렸다
+### 01 우물 안 일잘러, 회사 밖에서도 일잘러를 꿈꾸다
+### 02 누가 우물 안 일잘러를 만드나
+## Chapter 02. 메타인지에서 시작한 프로덕트 오너로의 도전
+### 06 헤드헌터보다 유능한 커피 한 잔_ 커피챗
+```
+
+Use `--split-heading 3` to split by the chapter subheadings (`###`), not by the
+chapter headings (`##`). Use a short `--source-key` for filenames and preserve
+the full title in frontmatter:
+
+```powershell
+@wiki ingest "C:/Users/ahnbu/cowork/06_연구/= e북 제작/_최종본_기획제안/txt/도그냥PO_20251125_정리본.md" --type notes --title "IT 기획자에서 프로덕트 오너로 점프하기" --source-key "도그냥PO" --split-heading 3 --local
+```
+
+If this is the first notes ingest on 2026-05-20, generated filenames should look like:
+
+```markdown
+raw/notes/20260520_01_도그냥PO_00_프롤로그.md
+raw/notes/20260520_02_도그냥PO_01_우물-안-일잘러-회사-밖에서도-일잘러를-꿈꾸다.md
+raw/notes/20260520_03_도그냥PO_02_누가-우물-안-일잘러를-만드나.md
+raw/notes/20260520_04_도그냥PO_03_우물-안-일잘러의-위기.md
+raw/notes/20260520_05_도그냥PO_04_우물-탈출을-방해하는-에고와의-싸움.md
+raw/notes/20260520_06_도그냥PO_05_터부시하는-부정적-감정이-성장을-만들어-낼-때.md
+raw/notes/20260520_07_도그냥PO_06_헤드헌터보다-유능한-커피-한-잔_커피챗.md
+```
+
+For `## 프롤로그` and `## 에필로그`, there is no lower-level numbered chapter
+heading before the content. Preserve them as their own split files with part
+labels `00_프롤로그` and `99_에필로그` when they contain substantial content.
+Do not merge them into the first or last numbered section.
+
 ### PDF Ingestion
 
 PDFs are single-source ingests, not collection imports. Use them for court
@@ -315,17 +395,36 @@ The `inbox/` directory is a drop zone. Users dump files there via Finder, `cp`, 
 4. Report each item processed
 5. If 5+ items were processed, suggest: "You've ingested N new sources. Want me to compile? Run `/wiki:compile`"
 
-## Slug Generation
+## Filename Generation
 
-1. Take the title, lowercase, replace spaces with hyphens, remove special characters
-2. Prepend today's date: `YYYY-MM-DD-`
-3. Truncate to 60 characters max (not counting .md extension)
-4. Example: "Attention Is All You Need" → `2026-04-04-attention-is-all-you-need.md`
-5. If a file with that slug already exists, append `-2`, `-3`, etc.
-6. This canonicalization applies to new ingests. If a legacy or imported raw
-   file already exists with spaces, title case, or upstream naming, do not
-   rename it during later maintenance; provenance workflows resolve exact paths
-   and slug fallbacks per `wiki-structure.md` Source Reference Resolution.
+1. Generate raw source filenames as `YYYYMMDD_NN_한국어-요약명.md` by default.
+2. Use the KST date for `YYYYMMDD`.
+3. Generate `NN` from the target `raw/{type}/` directory:
+   - scan existing files matching `^YYYYMMDD_[0-9][0-9]_.*\.md$`
+   - take the highest sequence for that date
+   - use the next number, zero-padded to 2 digits
+4. For batch or split ingestion, reserve consecutive `NN` values in processing order.
+5. Keep the human title concise enough that the full filename remains readable.
+6. Allowed characters are Korean letters, ASCII letters and digits, `_`, `-`, and `.`.
+7. Use `_` for structural separation such as date, sequence, source key, and part number. Use `-` only inside the human title when useful.
+8. Example: "Attention Is All You Need" ingested on 2026-05-20 as the first paper of the day becomes `20260520_01_Attention-Is-All-You-Need.md`.
+9. Example: "LLM 위키 설계 메모" ingested as the second note of the day becomes `20260520_02_LLM-위키-설계-메모.md`.
+10. This canonicalization applies to new ingests. If a legacy or imported raw file already exists with spaces, title case, or an older `YYYY-MM-DD-` prefix, do not rename it during later maintenance; provenance workflows resolve exact paths and slug fallbacks per `wiki-structure.md` Source Reference Resolution.
+
+## Raw Filename Migration
+
+Existing raw files may use legacy filenames such as `YYYY-MM-DD-slug.md`. Do not
+rename them during ordinary ingest, lint, compile, query, or refresh. Rename only
+when the user explicitly requests migration.
+
+Migration must be deterministic and script-driven:
+
+1. Run `node scripts/migrate-raw-filenames.mjs --wiki <wiki-root> --dry-run`.
+2. Review the mapping from old raw paths to new `YYYYMMDD_NN_...` paths.
+3. If the dry-run reports collisions, missing files, or ambiguous references, stop and fix those first.
+4. Run `node scripts/migrate-raw-filenames.mjs --wiki <wiki-root> --apply` only after dry-run approval.
+5. Rewrite exact raw path references in `wiki/`, `output/`, `raw/_index.md`, `raw/{type}/_index.md`, and `_index.md`.
+6. Append a migration entry to `log.md`.
 
 ## Post-Ingestion Index Updates
 

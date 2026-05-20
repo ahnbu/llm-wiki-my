@@ -18,7 +18,7 @@ assert_contains() {
   file="$1"
   pattern="$2"
   message="$3"
-  if grep -Eq "$pattern" "$file"; then
+  if grep -Eq -- "$pattern" "$file"; then
     log_pass "$message"
   else
     log_fail "$message" "missing pattern '$pattern' in $file"
@@ -29,7 +29,7 @@ assert_not_contains() {
   file="$1"
   pattern="$2"
   message="$3"
-  if grep -Eq "$pattern" "$file"; then
+  if grep -Eq -- "$pattern" "$file"; then
     log_fail "$message" "unexpected pattern '$pattern' in $file"
   else
     log_pass "$message"
@@ -102,10 +102,22 @@ echo "--- ahnbu fork policy checks ---"
 assert_contains "$PLUGIN_DIR/commands/compile.md" "Korean by default|한국어" "compile command documents Korean article defaults"
 assert_contains "$PLUGIN_DIR/commands/query.md" "Korean by default|한국어" "query command documents Korean response defaults"
 assert_contains "$PLUGIN_DIR/commands/output.md" "Korean by default|한국어" "output command documents Korean artifact defaults"
-assert_contains "$PLUGIN_DIR/commands/ingest.md" "Korean filename|한국어 파일명|한글" "ingest command documents Korean filename defaults"
+assert_contains "$PLUGIN_DIR/commands/ingest.md" "YYYYMMDD_NN_한국어-요약명\\.md|YYYYMMDD_NN" "ingest command documents YYYYMMDD_NN raw filename defaults"
+assert_contains "$PLUGIN_DIR/skills/wiki-manager/references/ingestion.md" "YYYYMMDD_NN_한국어-요약명\\.md|YYYYMMDD_NN" "ingestion protocol documents YYYYMMDD_NN filename defaults"
+assert_contains "$PLUGIN_DIR/skills/wiki-manager/references/wiki-structure.md" "YYYYMMDD_NN_한국어-요약명\\.md|YYYYMMDD_NN" "wiki structure documents YYYYMMDD_NN filename policy"
+assert_not_contains "$PLUGIN_DIR/commands/ingest.md" "Generate filename: .*YYYY-MM-DD-한국어-요약명\\.md" "ingest command no longer uses dashed date raw filenames"
+assert_not_contains "$PLUGIN_DIR/skills/wiki-manager/references/ingestion.md" "Prepend today's date: \`YYYY-MM-DD-\`" "ingestion protocol no longer uses dashed date slug generation"
+assert_not_contains "$PLUGIN_DIR/skills/wiki-manager/references/wiki-structure.md" "Raw sources.*YYYY-MM-DD-한국어-요약명\\.md" "wiki structure no longer uses dashed date raw filename policy"
+assert_contains "$PLUGIN_DIR/commands/ingest.md" "--split-heading <level>" "ingest command exposes heading split option"
+assert_contains "$PLUGIN_DIR/commands/ingest.md" "split-markdown-source\\.mjs" "ingest command uses deterministic markdown split script"
+assert_contains "$PLUGIN_DIR/skills/wiki-manager/references/ingestion.md" "split-markdown-source\\.mjs" "ingestion protocol documents deterministic markdown split script"
+assert_contains "$PLUGIN_DIR/commands/ingest.md" "raw/notes/|type: notes" "ingest command routes book chapters to notes"
+assert_contains "$PLUGIN_DIR/skills/wiki-manager/references/ingestion.md" "Book and Long Markdown Split|book chapter|책" "ingestion protocol documents book/chapter split"
+assert_contains "$PLUGIN_DIR/skills/wiki-manager/references/ingestion.md" "split_heading_level|split_part_index|split_part_total" "ingestion protocol preserves split provenance"
+assert_not_contains "$PLUGIN_DIR/commands/ingest.md" "\\[--type [^]]*book" "ingest argument hint does not expose book raw type"
+assert_not_contains "$PLUGIN_DIR/skills/wiki-manager/references/wiki-structure.md" "type: articles\\|papers\\|repos\\|notes\\|data\\|book" "wiki structure raw type enum does not include book"
 assert_contains "$PLUGIN_DIR/commands/wiki.md" "keep .*\\.wiki.*Git|Git.*\\.wiki|Do not append .*\\.wiki" "wiki init documents .wiki Git inclusion"
 assert_not_contains "$PLUGIN_DIR/commands/wiki.md" "For local wikis .*: append .*\\.wiki/.*\\.gitignore" "wiki init no longer tells local users to ignore .wiki"
-assert_contains "$PLUGIN_DIR/skills/wiki-manager/references/wiki-structure.md" "Korean filename|한국어 파일명|한글" "wiki structure documents Korean filename policy"
 assert_contains "$PROJECT_ROOT/AGENTS.md" "keep .*\\.wiki.*Git|Git.*\\.wiki|Do not append .*\\.wiki" "portable protocol documents .wiki Git inclusion"
 
 # Codex mirror validation — the artifacts that Codex installs from this repo.
