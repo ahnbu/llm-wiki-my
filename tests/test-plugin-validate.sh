@@ -172,7 +172,7 @@ if [ -f "$CODEX_SKILL/SKILL.md" ]; then
   else
     log_fail "Codex SKILL.md has no frontmatter" "missing ---"
   fi
-  if grep -Eq $'^name: wiki\r?$' "$CODEX_SKILL/SKILL.md"; then
+  if grep -Eq '^name:[[:space:]]*wiki[[:space:]]*$' "$CODEX_SKILL/SKILL.md"; then
     log_pass "Codex SKILL.md uses the wiki skill name"
   else
     log_fail "Codex SKILL.md uses the wrong skill name" "expected 'name: wiki'"
