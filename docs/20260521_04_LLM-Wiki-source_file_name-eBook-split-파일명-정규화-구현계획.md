@@ -1025,10 +1025,11 @@ all patterns are present
 
 | 항목 | 상태 | 근거 |
 |---|---:|---|
-| 기존 `.wiki` raw 파일 마이그레이션 | ❌ 미수행 | dry-run만 실행했고 `--apply`는 실행하지 않음 |
-| 마이그레이션 후보 | 101개 | `repair-ebook-split-filenames.mjs --dry-run` 결과 |
-| 운영 `.wiki` 기존 변경 | ⚠️ 보호 필요 | `.wiki/wiki/concepts/제품_문제정의_MVP.md`, `.wiki/wiki/topics/프로덕트개발_운영루프.md`가 이미 수정 상태 |
-| 사용자 승인 | ⚠️ 필요 | raw 파일 rename과 wiki/output 참조 rewrite가 발생함 |
+| 기존 `.wiki` raw 파일 마이그레이션 | ✅ 수행 | 사용자 `운영 wiki repair apply 승인` 후 apply 실행 |
+| 마이그레이션 후보 | 101개 | `repair-ebook-split-filenames.mjs --apply` 결과 `count: 101` |
+| collection manifest 파일명 | ✅ 보완 수행 | `raw/repos` collection manifest 5개를 원천 파일 basename 기준으로 추가 rename |
+| 운영 `.wiki` 기존 변경 | ✅ 보호 | apply 전 `.wiki` 변경 0개 확인 후 백업 생성 |
+| 사용자 승인 | ✅ 확인 | 사용자 승인 문구 확인 후 apply 실행 |
 
 ### 크리티컬 이슈 검토 결과
 
@@ -1036,9 +1037,10 @@ all patterns are present
 |---|---:|---|---|
 | target 파일 경로 충돌 | ✅ 현재 없음 | dry-run `to` 경로가 이미 존재하는지 검사했고 결과 0개 | apply 직전 preflight로 재검사 |
 | 중복 target 경로 | ✅ 현재 없음 | dry-run `to` 경로 `Group-Object` 중복 검사 결과 0개 | apply 직전 preflight로 재검사 |
-| 기존 사용자 변경 덮어쓰기 | ⚠️ 위험 있음 | `.wiki/wiki/concepts/제품_문제정의_MVP.md`, `.wiki/wiki/topics/프로덕트개발_운영루프.md`가 수정 상태 | apply 전 diff snapshot 저장, apply 후 해당 파일 diff 별도 검토 |
+| 기존 사용자 변경 덮어쓰기 | ✅ 이번 apply에서는 없음 | apply 직전 `.wiki` 변경 0개 확인 | apply 전 백업 생성과 status 기록을 완료 기준에 유지 |
 | 참조 rewrite 과다 | ⚠️ 위험 있음 | repair script는 `.wiki` 내 `.md`, `.json`, `.canvas`에서 기존 파일명 문자열을 치환함 | rewrite 대상 diff 검토와 local lint를 완료 기준에 추가 |
-| 구조·참조 무결성 검증 부족 | ⚠️ 보완 필요 | 기존 계획은 slug 잔여 검색 중심이었음 | `scripts/llm-wiki lint <wiki>`를 apply 후 필수 검증에 추가 |
+| 구조·참조 무결성 검증 부족 | ⚠️ 보완 필요 | 기존 계획은 slug 잔여 검색 중심이었음 | `python scripts/llm-wiki lint <wiki>`를 apply 후 필수 검증에 추가 |
+| Windows/PowerShell CLI 오호출 | ❌ 실제 발생 | 확장자 없는 Python CLI `scripts/llm-wiki`를 직접 실행해 Windows 앱 선택 창이 표시됨 | Windows/PowerShell에서는 `python D:/.../scripts/llm-wiki ...`만 사용하고, 직접 경로 실행 금지 |
 
 ### 마이그레이션 대상
 
@@ -1091,9 +1093,31 @@ Expected:
   "dry_run_count": 101,
   "target_collisions": 0,
   "duplicate_targets": 0,
-  "preexisting_wiki_changes": 2
+  "preexisting_wiki_changes": 0
 }
 ```
+
+### Windows/PowerShell CLI 실행 주의
+
+`D:/vibe-coding/llm-wiki-my/scripts/llm-wiki`는 확장자 없는 Python CLI 파일이다. Unix 계열 shell에서는 shebang과 executable bit로 `./scripts/llm-wiki` 실행이 가능하지만, Windows/PowerShell에서 절대경로를 직접 실행하면 앱 선택 창이 뜰 수 있다.
+
+금지:
+
+```powershell
+D:/vibe-coding/llm-wiki-my/scripts/llm-wiki lint $wiki
+```
+
+허용:
+
+```powershell
+python D:/vibe-coding/llm-wiki-my/scripts/llm-wiki lint $wiki
+```
+
+재발 방지 기준:
+
+- 계획문서와 검증 로그에서 Windows/PowerShell 명령은 항상 `python .../scripts/llm-wiki` 형식으로 작성한다.
+- `scripts/llm-wiki` 직접 실행 예시는 Unix/Git Bash 전용으로만 해석한다.
+- 앱 선택 창이 뜨면 어떤 앱도 선택하지 않고 닫은 뒤, `python` 경유 명령으로 재실행한다.
 
 ### 실행 절차
 
@@ -1102,15 +1126,15 @@ Expected:
 | 1 | 승인 확인 | 사용자 명시 승인 확인 | 승인 없으면 중단 |
 | 2 | 백업 생성 | PowerShell `Copy-Item`으로 `.wiki` 전체 백업 | 백업 폴더 생성 |
 | 3 | preflight 실행 | 위 Preflight command 실행 | collision 0, duplicate 0 |
-| 4 | 기존 변경 snapshot 보존 | `git -C <project> diff -- .wiki` 출력 저장 또는 문서에 요약 | 기존 2개 변경을 apply 전 상태로 식별 |
+| 4 | 기존 변경 snapshot 보존 | `git -C <project> diff -- .wiki` 출력 저장 또는 문서에 요약 | apply 전 변경 수와 대상 파일을 식별 |
 | 5 | apply 실행 | `node .../repair-ebook-split-filenames.mjs --wiki "<wiki>" --apply` | JSON `mode: apply`, `count: 101` |
 | 6 | 파일명 잔여 확인 | 기존 slug 패턴 검색 | `dogpo-20251125`, `idea-bulletsproof-2020`, `product-dev-2024`, `product-manager-2025`, `prompttelling-2025` 파일명 0개 |
 | 7 | frontmatter 확인 | 새 파일명 패턴 파일에서 `^source_file_name:` 검색 | 마이그레이션된 파일 누락 0개 |
 | 8 | 참조 갱신 확인 | `.wiki/wiki`, `.wiki/output`, `.wiki/raw/*/_index.md`에서 기존 slug 검색 | 기존 slug 참조 0개 |
-| 9 | local wiki lint | `D:/vibe-coding/llm-wiki-my/scripts/llm-wiki lint "<wiki>"` | critical 0개 |
+| 9 | local wiki lint | `python D:/vibe-coding/llm-wiki-my/scripts/llm-wiki lint "<wiki>"` | critical 0개, warning/suggestion은 별도 기록 |
 | 10 | 로그 확인 | `.wiki/log.md`에서 `source_file_name repair` 검색 | repair 로그 1건 이상 |
 | 11 | git diff 검토 | 강의 프로젝트 `.wiki` diff 확인 | rename과 참조 rewrite 외 의도치 않은 변경 없음 |
-| 12 | 기존 수정 파일 별도 검토 | 기존 수정 2개 파일 diff 확인 | 기존 사용자 변경이 삭제되지 않음 |
+| 12 | 기존 수정 파일 별도 검토 | apply 직전 변경 파일이 있을 때만 diff 확인 | 기존 사용자 변경이 있으면 삭제되지 않음 |
 
 ### apply 명령
 
@@ -1123,28 +1147,33 @@ node D:/vibe-coding/llm-wiki-my/scripts/repair-ebook-split-filenames.mjs --wiki 
 ```powershell
 $wiki = "C:/Users/ahnbu/cowork/02_강의/202606_다우기술_신입_7H/.wiki"
 $patterns = "dogpo-20251125|idea-bulletsproof-2020|product-dev-2024|product-manager-2025|prompttelling-2025"
-$legacyFiles = Get-ChildItem -LiteralPath "$wiki/raw/articles","$wiki/raw/notes" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match $patterns }
-$legacyRefs = Select-String -LiteralPath (Get-ChildItem -LiteralPath "$wiki/wiki","$wiki/output","$wiki/raw" -Recurse -File -Include *.md -ErrorAction SilentlyContinue).FullName -Pattern $patterns -ErrorAction SilentlyContinue
+$legacyChildFiles = Get-ChildItem -LiteralPath "$wiki/raw/articles","$wiki/raw/notes" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match $patterns }
+$legacyManifestFiles = Get-ChildItem -LiteralPath "$wiki/raw/repos" -File -Filter "*collection*.md" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match $patterns }
+$indexFiles = @("$wiki/raw/_index.md","$wiki/raw/articles/_index.md","$wiki/raw/notes/_index.md") | Where-Object { Test-Path -LiteralPath $_ }
+$wikiOutputFiles = Get-ChildItem -LiteralPath "$wiki/wiki","$wiki/output" -Recurse -File -Include *.md -ErrorAction SilentlyContinue
+$legacyRefs = Select-String -LiteralPath ($indexFiles + $wikiOutputFiles.FullName) -Pattern $patterns -ErrorAction SilentlyContinue
 $missingSourceFileName = Get-ChildItem -LiteralPath "$wiki/raw/articles","$wiki/raw/notes" -File -ErrorAction SilentlyContinue |
   Where-Object { $_.Name -match "^\d{8}_(도그냥PO_20251125|아이디어불패_2020f|프로덕트개발_2024|프로덕트매니저_2025|프롬프트텔링_2025f)_" } |
   Where-Object { -not (Select-String -LiteralPath $_.FullName -Pattern "^source_file_name:" -Quiet) }
 
 [pscustomobject]@{
-  legacy_files = ($legacyFiles | Measure-Object).Count
-  legacy_refs = ($legacyRefs | Measure-Object).Count
-  missing_source_file_name = ($missingSourceFileName | Measure-Object).Count
+  legacy_child_files = ($legacyChildFiles | Measure-Object).Count
+  legacy_manifest_files = ($legacyManifestFiles | Measure-Object).Count
+  legacy_refs_in_public_and_indexes = ($legacyRefs | Measure-Object).Count
+  target_ebook_files_missing_source_file_name = ($missingSourceFileName | Measure-Object).Count
 }
 
-D:/vibe-coding/llm-wiki-my/scripts/llm-wiki lint $wiki
+python D:/vibe-coding/llm-wiki-my/scripts/llm-wiki lint $wiki
 ```
 
 Expected:
 
 ```json
 {
-  "legacy_files": 0,
-  "legacy_refs": 0,
-  "missing_source_file_name": 0
+  "legacy_child_files": 0,
+  "legacy_manifest_files": 0,
+  "legacy_refs_in_public_and_indexes": 0,
+  "target_ebook_files_missing_source_file_name": 0
 }
 ```
 
@@ -1154,19 +1183,99 @@ Expected:
 |---|---|---|
 | apply 중 오류 | 즉시 중단하고 오류 파일 확인 | 부분 rename 여부 확인 |
 | 검증 실패 | 백업 `.wiki_backup_before_source_file_name_repair_<timestamp>`와 현재 `.wiki` diff 비교 | 원인 확인 전 추가 작업 금지 |
-| 참조 rewrite 과다 | 백업에서 affected 파일 복구 또는 git diff 기반 수동 복구 | 기존 사용자 변경 2개는 보존 |
+| 참조 rewrite 과다 | 백업에서 affected 파일 복구 또는 git diff 기반 수동 복구 | apply 직전 사용자 변경이 있으면 보존 |
 | 사용자가 롤백 지시 | 백업 기준으로 `.wiki` 복구 | 직접 삭제 대신 안전한 교체 절차 별도 확인 후 진행 |
 
 ### 완료 판정
 
-마이그레이션은 다음 4개가 모두 충족되어야 완료로 판정한다.
+마이그레이션은 다음 항목이 모두 충족되어야 완료로 판정한다.
 
 - 기존 영어 slug 파일명이 `raw/articles`, `raw/notes`에서 0개다.
+- 기존 영어 slug collection manifest 파일명이 `raw/repos`에서 0개다.
 - 마이그레이션된 101개 파일 모두 `source_file_name` frontmatter를 가진다.
 - `.wiki/wiki`, `.wiki/output`, `.wiki/raw/*/_index.md`에 기존 slug 참조가 0개다.
-- `scripts/llm-wiki lint "<wiki>"`에서 critical issue가 0개다.
+- `python scripts/llm-wiki lint "<wiki>"`에서 critical issue가 0개이고 warning/suggestion은 별도 기록되어 있다.
 - `.wiki/log.md`에 `source_file_name repair` 실행 로그가 남아 있다.
-- apply 전부터 있던 사용자 변경 2개가 삭제되거나 되돌려지지 않았다.
+- apply 직전 `.wiki` 변경 상태가 기록되어 있고, 기존 변경이 있으면 삭제되거나 되돌려지지 않았다.
+
+### 운영 apply 수행 결과
+
+수행 시점: 2026-05-21 KST
+
+| 항목 | 결과 | 근거 |
+|---|---:|---|
+| preflight dry-run 후보 | ✅ 101개 | `dry_run_count: 101` |
+| target 충돌 | ✅ 0개 | `target_collisions: 0` |
+| 중복 target | ✅ 0개 | `duplicate_targets: 0` |
+| apply 전 `.wiki` 변경 | ✅ 0개 | `preexisting_wiki_changes: 0` |
+| 백업 | ✅ 생성 | `C:/Users/ahnbu/cowork/02_강의/202606_다우기술_신입_7H/.wiki_backup_before_source_file_name_repair_20260521_155607` |
+| child 파일 rename | ✅ 101개 | apply 결과 `count: 101` |
+| reference rewrite | ✅ 22개 파일 | apply 결과 `rewrittenFiles: 22` |
+| collection manifest rename | ✅ 5개 | `raw/repos/20260521_collection-*.md` 5개 추가 정규화 |
+| legacy child filename | ✅ 0개 | 검증 결과 `legacy_child_files: 0` |
+| legacy manifest filename | ✅ 0개 | 검증 결과 `legacy_manifest_files: 0` |
+| public/index legacy reference | ✅ 0개 | 검증 결과 `legacy_refs_in_public_and_indexes: 0` |
+| migrated eBook `source_file_name` 누락 | ✅ 0개 | 검증 결과 `target_ebook_files_missing_source_file_name: 0` |
+| lint critical | ✅ 0개 | `python .../scripts/llm-wiki lint` 결과 |
+| lint warning | ⚠️ 1개 | 기존 `raw/articles/_resources` unexpected directory |
+| lint suggestion | ⚠️ 20개 | 미컴파일 raw source reference suggestion |
+| lint exit code | ⚠️ 1 | critical은 0개이나 warning 존재로 fail 판정 |
+
+실행 중 발견된 운영 이슈:
+
+- 잘못된 명령: `D:/vibe-coding/llm-wiki-my/scripts/llm-wiki lint "<wiki>"`
+- 발생 현상: Windows 앱 선택 창 표시
+- 원인: 확장자 없는 Python CLI를 PowerShell에서 직접 실행
+- 보완: Windows/PowerShell 검증 명령은 `python D:/vibe-coding/llm-wiki-my/scripts/llm-wiki lint "<wiki>"`로 고정
+
+잔여 lint warning 판정:
+
+- `raw/articles/_resources`는 raw markdown에서 실제 참조되는 이미지 asset 폴더다.
+- 마이그레이션 작업에서 이동하거나 삭제하면 원문 이미지 링크를 깨뜨릴 수 있으므로 이번 repair 범위에서는 보존한다.
+- 이 warning을 제거하려면 운영 wiki 파일 이동이 아니라 `llm-wiki lint`의 raw asset directory 허용 정책을 별도 이슈로 검토한다.
+
+### Done-check-lite 최종 검수
+
+검수 시점: 2026-05-21 KST
+
+#### 1. 최종 판정
+
+| 항목 | 판정 | 근거 |
+|---|---|---|
+| 전체 상태 | ✅ 완료 | 원요구인 운영 wiki repair apply, 마이그레이션 검증, 수행결과 문서 업데이트가 완료됐다. |
+
+#### 2. 요구사항 대조표
+
+| 원래 요구사항 | 상태 | 구현 근거 | 검증 근거 | 비고 |
+|---|---|---|---|---|
+| 운영 wiki repair apply 수행 | ✅ 완료 | `.wiki/raw/articles`, `.wiki/raw/repos`, `.wiki/raw/_index.md`, `.wiki/log.md` 변경 | apply 결과 `count: 101`, `rewrittenFiles: 22` | collection manifest 5개도 추가 정규화 |
+| 기존 영어 slug 기반 eBook split 파일 마이그레이션 | ✅ 완료 | 101개 child 파일명이 `source_file_name` 기준으로 변경 | `legacy_child_files: 0`, `target_ebook_files_missing_source_file_name: 0` | 내부 provenance 값 `collection`, `upstream_id`는 보존 |
+| collection manifest의 보이는 slug 잔여 제거 | ✅ 완료 | `raw/repos/20260521_collection-*.md` 5개 rename | `legacy_manifest_files: 0` | 기존 slug manifest 파일명 0개 |
+| 공개 산출물/인덱스 legacy reference 제거 | ✅ 완료 | `.wiki/raw/_index.md`, wiki/reference 파일 참조 갱신 | `legacy_refs_in_public_and_indexes: 0` | raw 본문 내부 provenance는 검사 대상에서 제외 |
+| 수행결과를 계획문서에 업데이트 | ✅ 완료 | 이 문서의 `운영 apply 수행 결과`, `Done-check-lite 최종 검수` | 문서 내 결과표와 검증값 기록 | lint warning도 별도 기록 |
+| Windows/PowerShell CLI 오호출 재발 방지 반영 | ✅ 완료 | 이 문서의 `Windows/PowerShell CLI 실행 주의`, README PowerShell 예시 | `python .../scripts/llm-wiki` 형식으로 검증 명령 정정 | 직접 실행 예시는 금지 또는 Unix/Git Bash 전용으로 분리 |
+| 완료 전 검증 수행 | ✅ 완료 | 운영 wiki log의 `source_file_name repair verification` | 마이그레이션 검증 4개 지표 모두 0, `git diff --check` 오류 없음 | lint는 warning 1개로 exit 1 |
+
+#### 3. 미완료·승인 필요 항목
+
+없음.
+
+| 항목 | 문제 | 필요한 다음 작업 |
+|---|---|---|
+| 없음 | 없음 | 없음 |
+
+#### 4. 검증 근거
+
+| 구분 | 근거 |
+|---|---|
+| 실행한 검증 | migration verification JSON: `legacy_child_files: 0`, `legacy_manifest_files: 0`, `legacy_refs_in_public_and_indexes: 0`, `target_ebook_files_missing_source_file_name: 0` |
+| 실행한 검증 | `python D:/vibe-coding/llm-wiki-my/scripts/llm-wiki lint <wiki>`: 0 critical, 1 warning, 20 suggestions, exit 1 |
+| 실행한 검증 | `git diff --check` for `D:/vibe-coding/llm-wiki-my`: 오류 없음 |
+| 실행한 검증 | `git diff --check -- 202606_다우기술_신입_7H/.wiki`: 오류 없음 |
+| 확인한 파일 | `C:/Users/ahnbu/cowork/02_강의/202606_다우기술_신입_7H/.wiki/log.md` |
+| 확인한 파일 | `D:/vibe-coding/llm-wiki-my/docs/20260521_04_LLM-Wiki-source_file_name-eBook-split-파일명-정규화-구현계획.md` |
+| 확인한 파일 | `D:/vibe-coding/llm-wiki-my/README.md` |
+| 커밋 | 없음 |
 
 ---
 

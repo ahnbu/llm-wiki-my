@@ -350,8 +350,8 @@ Check your installed version:
 /wiki:lint --fix                                  # Clean up inconsistencies
 ```
 
-When working from this repository checkout, you can also run deterministic
-checks without an agent:
+When working from this repository checkout on Unix, macOS, or Git Bash, you can
+also run deterministic checks without an agent:
 
 ```bash
 ./scripts/llm-wiki lint /path/to/wiki
@@ -359,6 +359,13 @@ checks without an agent:
 ./scripts/llm-wiki archive --hub /path/to/hub topic old-interest --reason "No longer active"
 ./scripts/llm-wiki archive --hub /path/to/hub list --archived
 ./scripts/llm-wiki archive --hub /path/to/hub restore old-interest
+```
+
+On Windows PowerShell, run the extensionless Python helper through `python`:
+
+```powershell
+python D:/path/to/llm-wiki-my/scripts/llm-wiki lint C:/path/to/wiki
+python D:/path/to/llm-wiki-my/scripts/llm-wiki lint --fix C:/path/to/wiki
 ```
 
 This local helper covers structural checks that do not require an LLM. The
