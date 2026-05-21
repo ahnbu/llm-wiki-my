@@ -5,7 +5,7 @@ session_id: codex:019e482e-1b1f-7b01-b187-ff0bdb2d07fa
 session_path: C:/Users/ahnbu/.codex/sessions/2026/05/21/rollout-2026-05-21T10-37-21-019e482e-1b1f-7b01-b187-ff0bdb2d07fa.jsonl
 ai: codex
 description: "Ingest source material into an active wiki. Accepts URLs, file paths, PDFs, freeform text, or processes the inbox. Supports tweets via Grok MCP."
-argument-hint: "<url|filepath|\"text\"> [--type articles|papers|repos|notes|data] [--title \"Title\"] [--source-key <short-key>] [--split-heading <level>] [--inbox] [--keep] [--wiki <name>] [--local] [--auto-classify] [--new-topic <name>] [--project <slug>] [--include-archived]"
+argument-hint: "<url|filepath|\"text\"> [--type articles|papers|repos|notes|data] [--title \"Title\"] [--source-file-name <source_file_name>] [--split-heading <level>] [--inbox] [--keep] [--wiki <name>] [--local] [--auto-classify] [--new-topic <name>] [--project <slug>] [--include-archived]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Bash(wc:*), Bash(date:*), Bash(mv:*), Bash(mkdir:*), Bash(basename:*), Bash(file:*), Bash(curl:*), Bash(mktemp:*), Bash(rm:*), Bash(pdftotext:*), Bash(python3:*), WebFetch, WebSearch
 ---
 
@@ -199,13 +199,13 @@ If `--split-heading <level>` is present, treat the input as one long Markdown so
 - This option is deterministic for Markdown files. Do not infer a PDF or EPUB table of contents in this workflow.
 - Before applying a split for long Markdown/eBook sources, run `node scripts/recommend-markdown-split.mjs --source <path> --levels 2,3 --soft-limit 20000 --hard-limit 30000 --manifest <manifest.json>`.
 - Use the recommendation report to pick the default `--split-heading` level. If only 1-2 chunks exceed the hard warning threshold, keep the default level and split those chunks as exceptions rather than lowering the whole book level.
-- First run `node scripts/split-markdown-source.mjs --wiki <wiki-root> --source <path> --title "<title>" --source-key "<short-key>" --type <type> --split-heading <level> --dry-run`.
+- First run `node scripts/split-markdown-source.mjs --wiki <wiki-root> --source <path> --title "<title>" --source-file-name <source_file_name> --type <type> --split-heading <level> --dry-run`. If omitted, `source_file_name` is derived from the original source filename stem.
 - Review the generated mapping and stop if the user asked to inspect it before writing.
 - Run the same command with `--apply` to create raw files.
 - When splitting below chapter level, preserve the nearest parent heading in frontmatter as `split_parent_heading`, for example `Chapter 01. 일잘러의 세상이 흔들렸다`. Do not include the parent heading text in every split body unless it is needed for readability.
 - After script output, verify the created files, update or rebuild indexes if needed, append the ingest log entry, and report file paths.
 
-1. Generate filename: `YYYYMMDD_한국어-요약명.md` by default. Use the KST date for `YYYYMMDD`. Use Korean for human-facing filenames when the source title or user context is Korean. Allowed characters are Korean letters, ASCII letters and digits, `_`, `-`, and `.`. Use `_` for structural separation such as date, source key, and split part number; use `-` only inside the human title when useful. Remove forbidden characters. If the target filename already exists, append `_02`, `_03`, etc. Preserve existing raw filenames; this rule applies to new ingests only.
+1. Generate filename: `YYYYMMDD_한국어-요약명.md` by default. Use the KST date for `YYYYMMDD`. Use Korean for human-facing filenames when the source title or user context is Korean. Allowed characters are Korean letters, ASCII letters and digits, `_`, `-`, and `.`. Use `_` for structural separation such as date, `source_file_name`, and split part number; use `-` only inside the human title when useful. Remove forbidden characters. If the target filename already exists, append `_02`, `_03`, etc. Preserve existing raw filenames; this rule applies to new ingests only.
 2. Write source file to `raw/{type}/` with proper frontmatter:
    ```
    ---

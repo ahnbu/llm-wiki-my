@@ -277,7 +277,7 @@ Legacy field names and enum values are rewritten to their canonical form. This i
 **Canonical optional raw-source keys** (do not warn as unknown):
 `collection`, `adapter`, `upstream_id`, `upstream_type`, `revision`, `sha`,
 `canonical_url`, `content_format`, `license`, `authors`, `categories`,
-`outlinks`, `fetched`.
+`outlinks`, `fetched`, `source_file_name`.
 
 **Key aliases** (old → canonical, append-only — never remove an entry). Populate this table when a real field rename happens; do not pre-populate with speculative entries.
 

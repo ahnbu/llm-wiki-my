@@ -296,25 +296,26 @@ indexes the result.
 2. Run dry-run:
 
    ```powershell
-   node scripts/split-markdown-source.mjs --wiki <wiki-root> --source <file.md> --title "<title>" --source-key "<short-key>" --type notes --split-heading <level> --dry-run
+   node scripts/split-markdown-source.mjs --wiki <wiki-root> --source <file.md> --title "<title>" --source-file-name <source_file_name> --type notes --split-heading <level> --dry-run
    ```
 
 3. Confirm the output mapping.
 4. Run apply:
 
    ```powershell
-   node scripts/split-markdown-source.mjs --wiki <wiki-root> --source <file.md> --title "<title>" --source-key "<short-key>" --type notes --split-heading <level> --apply
+   node scripts/split-markdown-source.mjs --wiki <wiki-root> --source <file.md> --title "<title>" --source-file-name <source_file_name> --type notes --split-heading <level> --apply
    ```
 
 5. Verify every generated file exists under `raw/notes/`.
 6. Update `raw/notes/_index.md`, `raw/_index.md`, and master `_index.md`.
-7. Append one log entry summarizing the split batch, for example `## [YYYY-MM-DD] ingest | Split Book Title into 12 notes (raw/notes/20260520_sourcekey_...)`.
+7. Append one log entry summarizing the split batch, for example `## [YYYY-MM-DD] ingest | Split Book Title into 12 notes (raw/notes/20260520_source_file_name_...)`.
 8. Use `type: notes` by default. Do not create `book`, `books`, or `raw/books/`.
 9. The script adds optional split provenance frontmatter:
 
    ```yaml
    book_title: "Full book title"
    content_format: markdown
+   source_file_name: "original filename stem"
    split_source: "original filepath or URL"
    split_heading_level: 3
    split_part_index: 1
@@ -348,24 +349,24 @@ For a book file with this structure:
 ```
 
 Use `--split-heading 3` to split by the chapter subheadings (`###`), not by the
-chapter headings (`##`). Use a short `--source-key` for filenames and preserve
-the full title in frontmatter:
+chapter headings (`##`). Use `--source-file-name` for the original source
+filename stem and preserve the full title in frontmatter:
 
 ```powershell
-@wiki ingest "C:/Users/ahnbu/cowork/06_연구/= e북 제작/_최종본_기획제안/txt/도그냥PO_20251125_정리본.md" --type notes --title "IT 기획자에서 프로덕트 오너로 점프하기" --source-key "도그냥PO" --split-heading 3 --local
+@wiki ingest "C:/Users/ahnbu/cowork/06_연구/= e북 제작/_최종본_기획제안/txt/도그냥PO_20251125_정리본.md" --type notes --title "IT 기획자에서 프로덕트 오너로 점프하기" --source-file-name "도그냥PO_20251125" --split-heading 3 --local
 ```
 
-Generic split filename shape: `YYYYMMDD_sourcekey_00_프롤로그.md`.
+Generic split filename shape: `YYYYMMDD_source_file_name_00_프롤로그.md`.
 
 Generated filenames should look like:
 
 ```markdown
-raw/notes/20260520_도그냥PO_00_프롤로그.md
-raw/notes/20260520_도그냥PO_01_우물-안-일잘러-회사-밖에서도-일잘러를-꿈꾸다.md
-raw/notes/20260520_도그냥PO_02_누가-우물-안-일잘러를-만드나.md
-raw/notes/20260520_도그냥PO_03_우물-안-일잘러의-위기.md
-raw/notes/20260520_도그냥PO_04_우물-탈출을-방해하는-에고와의-싸움.md
-raw/notes/20260520_도그냥PO_05_터부시하는-부정적-감정이-성장을-만들어-낼-때.md
+raw/notes/20260520_도그냥PO_20251125_00_프롤로그.md
+raw/notes/20260520_도그냥PO_20251125_01_우물-안-일잘러-회사-밖에서도-일잘러를-꿈꾸다.md
+raw/notes/20260520_도그냥PO_20251125_02_누가-우물-안-일잘러를-만드나.md
+raw/notes/20260520_도그냥PO_20251125_03_우물-안-일잘러의-위기.md
+raw/notes/20260520_도그냥PO_20251125_04_우물-탈출을-방해하는-에고와의-싸움.md
+raw/notes/20260520_도그냥PO_20251125_05_터부시하는-부정적-감정이-성장을-만들어-낼-때.md
 raw/notes/20260520_도그냥PO_06_헤드헌터보다-유능한-커피-한-잔_커피챗.md
 ```
 
@@ -432,7 +433,7 @@ The `inbox/` directory is a drop zone. Users dump files there via Finder, `cp`, 
 2. Use the KST date for `YYYYMMDD`.
 3. Keep the human title concise enough that the full filename remains readable.
 4. Allowed characters are Korean letters, ASCII letters and digits, `_`, `-`, and `.`.
-5. Use `_` for structural separation such as date, source key, and split part number. Use `-` only inside the human title when useful.
+5. Use `_` for structural separation such as date, `source_file_name`, and split part number. Use `-` only inside the human title when useful.
 6. If the target filename already exists, append `_02`, `_03`, and so on before `.md`. Do not create daily sequence numbers.
 7. Example: "Attention Is All You Need" ingested on 2026-05-20 becomes `20260520_Attention-Is-All-You-Need.md`.
 8. Example: "LLM 위키 설계 메모" ingested on 2026-05-20 becomes `20260520_LLM-위키-설계-메모.md`.

@@ -46,7 +46,7 @@ title: Fixture
 const script = path.join(projectRoot, "scripts", "split-markdown-source.mjs");
 const dryRun = execFileSync(
   "node",
-  [script, "--wiki", wiki, "--source", source, "--title", "테스트 책", "--source-key", "테스트책", "--split-heading", "3", "--date", "20260520", "--dry-run"],
+  [script, "--wiki", wiki, "--source", source, "--title", "테스트 책", "--source-file-name", "테스트책", "--split-heading", "3", "--date", "20260520", "--dry-run"],
   { encoding: "utf8" }
 );
 assert.match(dryRun, /"mode": "dry-run"/);
@@ -55,7 +55,7 @@ await assert.rejects(fs.access(path.join(wiki, "raw", "notes", "20260520_테스�
 
 execFileSync(
   "node",
-  [script, "--wiki", wiki, "--source", source, "--title", "테스트 책", "--source-key", "테스트책", "--split-heading", "3", "--date", "20260520", "--apply"],
+  [script, "--wiki", wiki, "--source", source, "--title", "테스트 책", "--source-file-name", "테스트책", "--split-heading", "3", "--date", "20260520", "--apply"],
   { encoding: "utf8" }
 );
 const files = await fs.readdir(path.join(wiki, "raw", "notes"));
@@ -73,12 +73,13 @@ assert.match(prologue, /프롤로그 본문/);
 const firstSection = await fs.readFile(path.join(wiki, "raw", "notes", "20260520_테스트책_01_첫-하위-목차.md"), "utf8");
 assert.match(firstSection, /split_parent_heading: "Chapter 01\. 첫 장"/);
 assert.match(firstSection, /book_title: "테스트 책"/);
+assert.match(firstSection, /source_file_name: "테스트책"/);
 assert.match(firstSection, /### 01 첫 하위 목차/);
 assert.match(firstSection, /첫 본문/);
 
 execFileSync(
   "node",
-  [script, "--wiki", wiki, "--source", source, "--title", "테스트 책", "--source-key", "테스트책", "--split-heading", "3", "--date", "20260520", "--apply"],
+  [script, "--wiki", wiki, "--source", source, "--title", "테스트 책", "--source-file-name", "테스트책", "--split-heading", "3", "--date", "20260520", "--apply"],
   { encoding: "utf8" }
 );
 
@@ -106,7 +107,7 @@ await fs.writeFile(
 
 execFileSync(
   "node",
-  [script, "--wiki", leafWiki, "--source", leafSource, "--title", "테스트 책", "--source-key", "테스트책", "--split-heading", "3", "--date", "20260520", "--apply"],
+  [script, "--wiki", leafWiki, "--source", leafSource, "--title", "테스트 책", "--source-file-name", "테스트책", "--split-heading", "3", "--date", "20260520", "--apply"],
   { encoding: "utf8" }
 );
 
@@ -180,7 +181,7 @@ execFileSync(
     exceptionSource,
     "--title",
     "테스트 책",
-    "--source-key",
+    "--source-file-name",
     "테스트책",
     "--split-heading",
     "2",

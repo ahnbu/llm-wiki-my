@@ -2,6 +2,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { analyzeMarkdownSplit } from "./lib/markdown-split-units.mjs";
+import { deriveSourceFileName } from "./lib/source-file-name.mjs";
 
 function parseArgs(argv) {
   const args = { sources: [], levels: [2, 3], softLimit: 20_000, hardLimit: 30_000 };
@@ -26,10 +27,6 @@ function parseArgs(argv) {
     throw new Error("--soft-limit and --hard-limit must be numbers");
   }
   return args;
-}
-
-function sourceKeyFrom(sourcePath) {
-  return path.basename(sourcePath, path.extname(sourcePath));
 }
 
 function levelStats(levels, level) {
@@ -83,7 +80,7 @@ async function main() {
     });
     const sourceEntry = {
       sourcePath: sourcePath.replaceAll("\\", "/"),
-      sourceKey: sourceKeyFrom(sourcePath),
+      source_file_name: deriveSourceFileName(sourcePath),
       analyzedHeadingLevels: analysis.manifest.analyzedHeadingLevels,
       rawHeadingStats: analysis.manifest.rawHeadingStats,
       effectiveSplitUnitStats: analysis.manifest.effectiveSplitUnitStats,
@@ -102,7 +99,7 @@ async function main() {
       })),
       manifestFields: [
         "source path",
-        "source key",
+        "source_file_name",
         "analyzed heading levels",
         "raw heading stats",
         "effective split unit stats",

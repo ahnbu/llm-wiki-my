@@ -289,6 +289,7 @@ Optional split provenance fields for heading-split book or long Markdown ingests
 ```yaml
 book_title: "Full book title"
 content_format: markdown
+source_file_name: "original filename stem"
 split_source: "original filepath or URL"
 split_heading_level: 3
 split_part_index: 1
@@ -482,7 +483,7 @@ For Korean wiki content, output artifact `title`, filename topic portion, sectio
 - **Inventory records**: keep the existing durable-record naming style unless a Korean workspace explicitly creates Korean tracking records.
 - **Dataset manifests**: keep `datasets/descriptive-slug/MANIFEST.md` for dataset compatibility.
 - **Output artifacts**: `{type}-한국어-주제명-YYYY-MM-DD.md` by default when generated from Korean wiki content.
-- **Korean filename policy**: Allowed characters for Korean wiki outputs are Korean letters, ASCII letters and digits, `_`, `-`, and `.`. Use `_` for structural separation such as date, source key, and split part number; use `-` for word separation inside human titles; remove forbidden characters and append `_02`, `_03`, and so on on collisions.
+- **Korean filename policy**: Allowed characters for Korean wiki outputs are Korean letters, ASCII letters and digits, `_`, `-`, and `.`. Use `_` for structural separation such as date, `source_file_name`, and split part number; use `-` for word separation inside human titles; remove forbidden characters and append `_02`, `_03`, and so on on collisions.
 - Preserve existing raw paths and legacy filenames. The Korean filename rule applies to newly generated files.
 
 ## Tag Convention

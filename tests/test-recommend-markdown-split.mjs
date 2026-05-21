@@ -50,7 +50,7 @@ assert.ok(json.sources[1].manifestFields.includes("effective split unit stats"))
 for (const source of json.sources) {
   for (const key of [
     "sourcePath",
-    "sourceKey",
+    "source_file_name",
     "analyzedHeadingLevels",
     "rawHeadingStats",
     "effectiveSplitUnitStats",
@@ -62,6 +62,7 @@ for (const source of json.sources) {
   ]) {
     assert.ok(key in source, key);
   }
+  assert.ok(!("sourceKey" in source));
 }
 
 console.log("PASS: recommend markdown split");

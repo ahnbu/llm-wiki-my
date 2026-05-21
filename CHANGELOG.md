@@ -6,6 +6,7 @@
 
 | 일시 | 유형 | 범위 | 변경내용 | 변경사유 | 작성AI |
 |---|---|---|---|---|---|
+| 2026-05-21 15:52 | fix | split | source_file_name 기반 eBook split 파일명 생성과 기존 raw repair 계획 고정 | - | Codex |
 | 2026-05-21 14:39 | fix | lint | 공용 lint helper의 성공 log 기록 조건과 URL-encoded link 해석 보강 | - | Codex |
 | 2026-05-21 11:57 | feat | split | eBook split recommendation과 leaf 보존 분할 추가 | - | Codex |
 | 2026-05-21 11:14 | fix | git-hook | `CHANGELOG.local.md` 추적을 해제하고 root `CHANGELOG.md` 일원화 정책에 맞춰 hook 설정 정리 | upstream에 `CHANGELOG*`가 없는 fork 운영 정책과 커밋 hook 요구 충돌 해소 | Codex |
