@@ -37,6 +37,25 @@ Concretely, when evolving the schema:
 
 There is no `/wiki:migrate` command and there should never be one. Lint rules **are** the schema.
 
+## Project-Local Lint Extensions
+
+The shared `llm-wiki lint` helper should only contain checks that apply to any
+topic wiki: structure, frontmatter, placement, local links, source provenance,
+coverage bookkeeping, archive lifecycle, inventory, and dataset structure.
+
+Project-specific checks belong in project-local tools or a future explicit
+configuration layer. Examples include a named source batch such as
+`90자료수집 28/28`, audience-specific bias checks, course-specific vocabulary
+guards, and one wiki's temporary backlog categories. Do not promote those rules
+into the shared helper unless at least two independent wikis need the same
+behavior and the rule can be expressed without hard-coded project paths,
+filenames, or business context.
+
+Lint logs and `Last lint` metadata are success records, not attempt records.
+Append them only after the deterministic lint command exits successfully.
+Failed attempts should be visible in the command output and exit code, not
+recorded as completed lint runs.
+
 **When editing the canonical spec** (`wiki-structure.md`, `compilation.md`, `ingestion.md`, `projects.md`, or any reference that defines paths or frontmatter fields), also:
 
 1. Update the relevant check(s) in this file — mechanical changes touch C11/C12/C13; project-model changes touch C8/C9; topic lifecycle changes touch C19.

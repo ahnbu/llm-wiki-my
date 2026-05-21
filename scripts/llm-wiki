@@ -14,6 +14,7 @@ import os
 import re
 import shutil
 import sys
+import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -868,17 +869,19 @@ def check_index_consistency(ctx: LintContext) -> None:
             continue
         missing_files: list[Path] = []
         dead_links: list[str] = []
-        for md_file in sorted(directory.glob("*.md")):
-            if md_file.name == "_index.md":
-                continue
-            if md_file.name not in text:
-                missing_files.append(md_file)
+        resolved_link_targets: set[Path] = set()
         for link in extract_markdown_links(text):
             if not is_local_markdown_link(link):
                 continue
             target = resolve_link_target(directory, link)
+            resolved_link_targets.add(target)
             if not target.exists():
                 dead_links.append(link)
+        for md_file in sorted(directory.glob("*.md")):
+            if md_file.name == "_index.md":
+                continue
+            if md_file.name not in text and md_file.resolve() not in resolved_link_targets:
+                missing_files.append(md_file)
         if ctx.fix and (missing_files or dead_links):
             regenerate_directory_index(ctx, directory)
             continue
@@ -965,7 +968,7 @@ def is_local_markdown_link(link: str) -> bool:
 
 
 def resolve_link_target(base_dir: Path, link: str) -> Path:
-    target = link.split("#", 1)[0]
+    target = urllib.parse.unquote(link.split("#", 1)[0])
     if target.startswith("/"):
         return Path(target)
     return (base_dir / target).resolve()
@@ -1324,6 +1327,11 @@ def append_lint_log(ctx: LintContext) -> None:
         handle.write(entry)
 
 
+def lint_failed(ctx: LintContext) -> bool:
+    counts = ctx.counts()
+    return bool(counts["critical"] or counts["warning"] or counts["suggestion"])
+
+
 def expand_leading_tilde(value: str) -> Path:
     if value == "~":
         return Path.home()
@@ -1518,13 +1526,14 @@ def run_lint(args: argparse.Namespace) -> int:
     check_structure(ctx)
     check_unknown_files(ctx)
     if hub_root:
-        append_lint_log(ctx)
+        failed = lint_failed(ctx)
+        if not failed:
+            append_lint_log(ctx)
         if args.json:
             print_json_report(ctx)
         else:
             print_text_report(ctx)
-        counts = ctx.counts()
-        return 1 if counts["critical"] or counts["warning"] or counts["suggestion"] else 0
+        return 1 if failed else 0
 
     load_documents(ctx)
     fix_legacy_wiki_frontmatter(ctx)
@@ -1539,15 +1548,16 @@ def run_lint(args: argparse.Namespace) -> int:
     check_coverage(ctx)
     check_freshness(ctx)
     check_projects(ctx)
-    append_lint_log(ctx)
+    failed = lint_failed(ctx)
+    if not failed:
+        append_lint_log(ctx)
 
     if args.json:
         print_json_report(ctx)
     else:
         print_text_report(ctx)
 
-    counts = ctx.counts()
-    return 1 if counts["critical"] or counts["warning"] or counts["suggestion"] else 0
+    return 1 if failed else 0
 
 
 def print_json_report(ctx: LintContext) -> None:

@@ -252,6 +252,59 @@ else
   log_fail "--fix creates explicit coverage reference for uncompiled raw sources" "$coverage_output"
 fi
 
+failed_fix_log="$tmpdir/failed-fix-log"
+mkdir "$failed_fix_log"
+cp -R "$SCRIPT_DIR/fixtures/defects/bad-frontmatter/." "$failed_fix_log/"
+before_log="$(cat "$failed_fix_log/log.md")"
+set +e
+failed_fix_output="$("$CLI" lint --fix "$failed_fix_log" 2>&1)"
+failed_fix_rc=$?
+set -e
+after_log="$(cat "$failed_fix_log/log.md")"
+if [ "$failed_fix_rc" -ne 0 ] \
+  && grep -q "Result: FAIL" <<<"$failed_fix_output" \
+  && [ "$before_log" = "$after_log" ]; then
+  log_pass "failed --fix lint does not append success log"
+else
+  log_fail "failed --fix lint does not append success log" "$failed_fix_output"
+fi
+
+successful_fix_log="$tmpdir/successful-fix-log"
+mkdir "$successful_fix_log"
+cp -R "$SCRIPT_DIR/fixtures/defects/missing-index/." "$successful_fix_log/"
+set +e
+successful_fix_output="$("$CLI" lint --fix "$successful_fix_log" 2>&1)"
+successful_fix_rc=$?
+set -e
+if [ "$successful_fix_rc" -eq 0 ] \
+  && grep -q "Result: PASS" <<<"$successful_fix_output" \
+  && grep -q "lint | local command: 0 critical, 0 warnings, 0 suggestions" "$successful_fix_log/log.md"; then
+  log_pass "successful --fix lint appends success log"
+else
+  log_fail "successful --fix lint appends success log" "$successful_fix_output"
+fi
+
+encoded_link_wiki="$tmpdir/encoded-link-wiki"
+mkdir "$encoded_link_wiki"
+cp -R "$GOLDEN/." "$encoded_link_wiki/"
+cat > "$encoded_link_wiki/output/space name.md" <<'EOF'
+# Space Name
+EOF
+cat > "$encoded_link_wiki/output/_index.md" <<'EOF'
+# Output Index
+
+## Contents
+
+| File | Summary | Tags | Updated |
+|------|---------|------|---------|
+| [Sample Output](sample-output.md) | Existing golden wiki output fixture. | sample | 2026-01-03 |
+| [Space Name](space%20name.md) | URL-encoded local link fixture. | encoded | 2026-01-05 |
+EOF
+
+expect_success \
+  "local markdown links resolve URL-encoded destinations" \
+  "$CLI" lint "$encoded_link_wiki"
+
 hub_scope="$tmpdir/hub-scope"
 mkdir -p "$hub_scope/topics/noisy-topic"
 cp -R "$SCRIPT_DIR/fixtures/defects/missing-index/." "$hub_scope/topics/noisy-topic/"
