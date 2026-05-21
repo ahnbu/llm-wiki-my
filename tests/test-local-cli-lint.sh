@@ -244,12 +244,188 @@ coverage_rc=$?
 set -e
 if [ "$coverage_rc" -eq 0 ] \
   && grep -q "Result: PASS" <<<"$coverage_output" \
-  && [ -f "$coverage_repair/wiki/references/uncompiled-source-coverage.md" ] \
-  && grep -q "raw/articles/2026-01-05-uncompiled-source.md" "$coverage_repair/wiki/references/uncompiled-source-coverage.md" \
-  && grep -q "Uncompiled Source Coverage" "$coverage_repair/wiki/references/_index.md"; then
+  && [ -f "$coverage_repair/raw/_uncompiled-source-coverage.md" ] \
+  && grep -q "raw/articles/2026-01-05-uncompiled-source.md" "$coverage_repair/raw/_uncompiled-source-coverage.md" \
+  && { [ ! -f "$coverage_repair/wiki/references/uncompiled-source-coverage.md" ] || false; } \
+  && ! grep -q "uncompiled-source-coverage.md" "$coverage_repair/wiki/references/_index.md"; then
   log_pass "--fix creates explicit coverage reference for uncompiled raw sources"
 else
   log_fail "--fix creates explicit coverage reference for uncompiled raw sources" "$coverage_output"
+fi
+
+legacy_coverage="$tmpdir/legacy-coverage"
+mkdir "$legacy_coverage"
+cp -R "$GOLDEN/." "$legacy_coverage/"
+mkdir -p "$legacy_coverage/wiki/references"
+cat > "$legacy_coverage/wiki/references/uncompiled-source-coverage.md" <<'EOF'
+---
+title: "Uncompiled Source Coverage"
+category: reference
+sources: []
+created: 2026-01-05
+updated: 2026-01-05
+tags: [coverage]
+confidence: low
+volatility: warm
+summary: "Legacy coverage backlog."
+---
+
+# Uncompiled Source Coverage
+EOF
+printf '\n| [Uncompiled Source Coverage](uncompiled-source-coverage.md) | Legacy coverage backlog | coverage | 2026-01-05 |\n' >> "$legacy_coverage/wiki/references/_index.md"
+set +e
+legacy_coverage_output="$("$CLI" lint --fix "$legacy_coverage" 2>&1)"
+legacy_coverage_rc=$?
+set -e
+if [ "$legacy_coverage_rc" -eq 0 ] \
+  && grep -q "Result: PASS" <<<"$legacy_coverage_output" \
+  && [ -f "$legacy_coverage/raw/_uncompiled-source-coverage.md" ] \
+  && [ ! -f "$legacy_coverage/wiki/references/uncompiled-source-coverage.md" ] \
+  && ! grep -q "uncompiled-source-coverage.md" "$legacy_coverage/wiki/references/_index.md"; then
+  log_pass "--fix migrates legacy coverage backlog to raw metadata"
+else
+  log_fail "--fix migrates legacy coverage backlog to raw metadata" "$legacy_coverage_output"
+fi
+
+excluded_coverage="$tmpdir/excluded-coverage"
+mkdir "$excluded_coverage"
+cp -R "$GOLDEN/." "$excluded_coverage/"
+cat > "$excluded_coverage/raw/articles/2026-01-05-appendix.md" <<'EOF'
+---
+title: "Appendix Fixture"
+source: https://example.com/appendix
+type: articles
+ingested: 2026-01-05
+tags: [appendix]
+summary: "Appendix-like raw source fixture that should be excluded from coverage backlog."
+---
+
+# Appendix Fixture
+
+Non-substantive back matter.
+EOF
+cat > "$excluded_coverage/raw/_source-exclusions.json" <<'EOF'
+{
+  "version": 1,
+  "sources": {
+    "raw/articles/2026-01-05-appendix.md": {
+      "reason": "appendix",
+      "note": "coverage backlog exclusion fixture",
+      "excluded_at": "2026-01-05",
+      "excluded_by": "test"
+    }
+  }
+}
+EOF
+set +e
+excluded_output="$("$CLI" lint --fix "$excluded_coverage" 2>&1)"
+excluded_rc=$?
+set -e
+if [ "$excluded_rc" -eq 0 ] \
+  && grep -q "Result: PASS" <<<"$excluded_output" \
+  && { [ ! -f "$excluded_coverage/raw/_uncompiled-source-coverage.md" ] \
+    || ! grep -q "raw/articles/2026-01-05-appendix.md" "$excluded_coverage/raw/_uncompiled-source-coverage.md"; }; then
+  log_pass "excluded raw source is omitted from coverage backlog"
+else
+  log_fail "excluded raw source is omitted from coverage backlog" "$excluded_output"
+fi
+
+excluded_cited="$tmpdir/excluded-cited"
+mkdir "$excluded_cited"
+cp -R "$GOLDEN/." "$excluded_cited/"
+cat > "$excluded_cited/raw/_source-exclusions.json" <<'EOF'
+{
+  "version": 1,
+  "sources": {
+    "raw/articles/2026-01-01-sample-article.md": {
+      "reason": "duplicate",
+      "note": "fixture for excluded source citation warning",
+      "excluded_at": "2026-01-05",
+      "excluded_by": "test"
+    }
+  }
+}
+EOF
+set +e
+excluded_cited_output="$("$CLI" lint "$excluded_cited" 2>&1)"
+excluded_cited_rc=$?
+set -e
+if [ "$excluded_cited_rc" -ne 0 ] \
+  && grep -q "remove those references and re-review" <<<"$excluded_cited_output"; then
+  log_pass "compiled article citing excluded source warns"
+else
+  log_fail "compiled article citing excluded source warns" "$excluded_cited_output"
+fi
+
+only_excluded="$tmpdir/only-excluded"
+mkdir "$only_excluded"
+cp -R "$GOLDEN/." "$only_excluded/"
+cat > "$only_excluded/raw/_source-exclusions.json" <<'EOF'
+{
+  "version": 1,
+  "sources": {
+    "raw/articles/2026-01-02-second-article.md": {
+      "reason": "non-substantive",
+      "note": "fixture for only-excluded article cleanup warning",
+      "excluded_at": "2026-01-05",
+      "excluded_by": "test"
+    }
+  }
+}
+EOF
+set +e
+only_excluded_output="$("$CLI" lint "$only_excluded" 2>&1)"
+only_excluded_rc=$?
+set -e
+if [ "$only_excluded_rc" -ne 0 ] \
+  && grep -q "backed only by excluded sources" <<<"$only_excluded_output"; then
+  log_pass "only-excluded article cleanup candidate warns"
+else
+  log_fail "only-excluded article cleanup candidate warns" "$only_excluded_output"
+fi
+
+bad_exclusions_json="$tmpdir/bad-exclusions-json"
+mkdir "$bad_exclusions_json"
+cp -R "$GOLDEN/." "$bad_exclusions_json/"
+cat > "$bad_exclusions_json/raw/_source-exclusions.json" <<'EOF'
+{ "version": 1, "sources":
+EOF
+set +e
+bad_exclusions_output="$("$CLI" lint "$bad_exclusions_json" 2>&1)"
+bad_exclusions_rc=$?
+set -e
+if [ "$bad_exclusions_rc" -ne 0 ] \
+  && grep -q "Source exclusions registry is invalid JSON" <<<"$bad_exclusions_output"; then
+  log_pass "invalid source exclusions JSON fails lint"
+else
+  log_fail "invalid source exclusions JSON fails lint" "$bad_exclusions_output"
+fi
+
+missing_excluded_source="$tmpdir/missing-excluded-source"
+mkdir "$missing_excluded_source"
+cp -R "$GOLDEN/." "$missing_excluded_source/"
+cat > "$missing_excluded_source/raw/_source-exclusions.json" <<'EOF'
+{
+  "version": 1,
+  "sources": {
+    "raw/articles/no-such-source.md": {
+      "reason": "appendix",
+      "note": "missing path fixture",
+      "excluded_at": "2026-01-05",
+      "excluded_by": "test"
+    }
+  }
+}
+EOF
+set +e
+missing_excluded_output="$("$CLI" lint "$missing_excluded_source" 2>&1)"
+missing_excluded_rc=$?
+set -e
+if [ "$missing_excluded_rc" -ne 0 ] \
+  && grep -q "Excluded source does not exist" <<<"$missing_excluded_output"; then
+  log_pass "missing excluded source fails lint"
+else
+  log_fail "missing excluded source fails lint" "$missing_excluded_output"
 fi
 
 failed_fix_log="$tmpdir/failed-fix-log"

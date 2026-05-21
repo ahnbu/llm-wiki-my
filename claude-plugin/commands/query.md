@@ -1,6 +1,6 @@
 ---
 description: "Ask questions against the compiled wiki. Supports quick/standard/deep depth levels, --list for browsing, --include-archived for explicit archived reads, and --resume to reload context after a session break. Answers from wiki content only, with citations."
-argument-hint: "<question> [--quick] [--deep] [--raw] [--list] [--include-archived] [--resume] [--tag <tag>] [--category concepts|topics|references] [--with <wiki>...] [--wiki <name>] [--local]"
+argument-hint: "<question> [--quick] [--deep] [--raw] [--list] [--include-excluded] [--include-archived] [--resume] [--tag <tag>] [--category concepts|topics|references] [--with <wiki>...] [--wiki <name>] [--local]"
 allowed-tools: Read, Glob, Grep, Bash(ls:*), Edit
 ---
 
@@ -30,6 +30,7 @@ of scope.
 - **--quick**: Fast answer from indexes only (no full article reads)
 - **--deep**: Thorough answer — read all related articles, follow all links, search raw, peek sibling wikis
 - **--raw**: Also search raw sources (implied by --deep)
+- **--include-excluded**: Include sources listed in `raw/_source-exclusions.json` when searching raw/deep. Label any such citation as excluded.
 - **--list**: Return a ranked list of matching articles instead of a synthesized answer. Useful for browsing what the wiki has on a topic before diving in.
 - **--include-archived**: Explicitly allow archived topic wikis or archived
   supplementary wikis to be read. Label archived citations clearly.
@@ -99,9 +100,9 @@ Most thorough. For complex questions requiring cross-referencing.
 
 2. **Read all relevant articles**: Read every article that could be relevant (err on the side of reading more). Follow ALL "See Also" links, even tangentially related ones.
 
-3. **Full-text search**: Grep `wiki/` AND `raw/` for key terms, synonyms, and related concepts
+3. **Full-text search**: Grep `wiki/` AND `raw/` for key terms, synonyms, and related concepts. Skip raw sources listed in `raw/_source-exclusions.json` unless `--include-excluded` is present.
 
-4. **Read raw sources**: Read any raw sources that seem relevant but may not be fully compiled into articles yet
+4. **Read raw sources**: Read any raw sources that seem relevant but may not be fully compiled into articles yet. Excluded sources are preserved assets; read and cite them only when the user explicitly asks for excluded sources or passes `--include-excluded`, and label citations as excluded.
 
 5. **Sibling wiki peek**:
    - Read `HUB/wikis.json`
@@ -127,7 +128,7 @@ When `--list` is set, return a ranked list of matching articles instead of a syn
    - Otherwise read all category indexes under `wiki/`
 
 2. **Full-text search**: Use Grep to search `wiki/` for the query terms.
-   - If `--raw`, also search `raw/`
+   - If `--raw`, also search `raw/`, skipping sources listed in `raw/_source-exclusions.json` unless `--include-excluded` is present.
 
 3. **Tag filter**: If `--tag` specified, use Grep to find files with matching tags in YAML frontmatter: `tags:.*<tag>`.
 

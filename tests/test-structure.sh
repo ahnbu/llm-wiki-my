@@ -55,7 +55,7 @@ while IFS= read -r -d '' file; do
       log_fail "$field missing in $bn" "C2 violation"
     fi
   done
-done < <(find "$GOLDEN/raw" -name "*.md" -not -name "_index.md" -print0)
+done < <(find "$GOLDEN/raw" -name "*.md" -not -name "_index.md" -not -name "_uncompiled-source-coverage.md" -print0)
 
 # Wiki articles: title, category, sources, created, updated, tags, confidence, summary
 while IFS= read -r -d '' file; do
@@ -116,7 +116,7 @@ while IFS= read -r -d '' file; do
     articles|papers|repos|notes|data) log_pass "valid type '$type_val' in $bn" ;;
     *) log_fail "invalid type '$type_val' in $bn" "C2 violation" ;;
   esac
-done < <(find "$GOLDEN/raw" -name "*.md" -not -name "_index.md" -print0)
+done < <(find "$GOLDEN/raw" -name "*.md" -not -name "_index.md" -not -name "_uncompiled-source-coverage.md" -print0)
 
 # category enum for wiki articles
 while IFS= read -r -d '' file; do
@@ -348,7 +348,7 @@ while IFS= read -r -d '' file; do
   else
     log_fail "misplaced: $bn (type=$type_val but in $parent_dir/)" "C11 violation"
   fi
-done < <(find "$GOLDEN/raw" -name "*.md" -not -name "_index.md" -print0)
+done < <(find "$GOLDEN/raw" -name "*.md" -not -name "_index.md" -not -name "_uncompiled-source-coverage.md" -print0)
 
 while IFS= read -r -d '' file; do
   bn=$(basename "$file")

@@ -8,6 +8,8 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Bash(wc:*), Bash(date:
 
 Retract (remove) a source that was previously ingested into the wiki. This handles the full blast radius: raw source deletion, compiled article cleanup, index updates, and optional recompilation.
 
+Source exclusion cleanup is not retraction. When a source is listed in `raw/_source-exclusions.json`, preserve the raw file. First report compiled articles that cite it. If the article has remaining non-excluded sources, recommend removing the excluded source from `sources:` and the Sources section, then re-reviewing or recompiling against the remaining sources. If every source is excluded, report the article as an active-wiki cleanup candidate. Do not delete or rewrite compiled articles automatically without explicit user approval.
+
 ### Parse $ARGUMENTS
 
 - **source-path**: Path to the raw source file to retract (e.g., `raw/articles/2026-shitcoiner-article.md`). Can be a filename only — will search raw/ for a match.

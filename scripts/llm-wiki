@@ -52,6 +52,18 @@ SCHEMA_STATUSES = {"unknown", "inferred", "declared", "validated"}
 CONFIDENCE_VALUES = {"high", "medium", "low"}
 VOLATILITY_VALUES = {"hot", "warm", "cold"}
 PERMISSION_DENIED_ERRNOS = {1, 13}
+SOURCE_EXCLUSIONS_FILE = Path("raw/_source-exclusions.json")
+SOURCE_EXCLUSION_REASONS = {
+    "appendix",
+    "acknowledgements",
+    "glossary",
+    "front-matter",
+    "back-matter",
+    "non-substantive",
+    "duplicate",
+    "other",
+}
+RAW_METADATA_FILES = {"_index.md", "_uncompiled-source-coverage.md"}
 
 ROOT_ALLOWED = {
     "_index.md",
@@ -72,7 +84,16 @@ ROOT_ALLOWED = {
     ".session-checkpoint.json",
 }
 HUB_ALLOWED = {"wikis.json", "_index.md", "log.md", "topics"}
-RAW_ALLOWED = {"_index.md", "articles", "papers", "repos", "notes", "data"}
+RAW_ALLOWED = {
+    "_index.md",
+    "_source-exclusions.json",
+    "_uncompiled-source-coverage.md",
+    "articles",
+    "papers",
+    "repos",
+    "notes",
+    "data",
+}
 WIKI_ALLOWED = {"_index.md", "concepts", "topics", "references", "theses"}
 INVENTORY_ALLOWED = {
     "_index.md",
@@ -117,6 +138,7 @@ class LintContext:
         self.fixes: list[str] = []
         self.documents: dict[Path, Document] = {}
         self.referenced_raw: set[Path] = set()
+        self.excluded_sources: set[Path] = set()
 
     def rel(self, path: Path | None) -> str:
         if path is None:
@@ -402,8 +424,70 @@ def content_markdown_files(root: Path) -> list[Path]:
     return [
         path
         for path in markdown_files(root)
-        if path.name != "_index.md" and path.name != "config.md"
+        if path.name != "_index.md"
+        and path.name != "config.md"
+        and not (path.parent.name == "raw" and path.name in RAW_METADATA_FILES)
     ]
+
+
+def load_source_exclusions(ctx: LintContext) -> None:
+    registry_path = ctx.root / SOURCE_EXCLUSIONS_FILE
+    ctx.excluded_sources = set()
+    if not registry_path.exists():
+        return
+    try:
+        data = json.loads(registry_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        ctx.issue("critical", f"Source exclusions registry is invalid JSON: {exc}", registry_path)
+        return
+    except OSError as exc:
+        ctx.issue("critical", f"Could not read source exclusions registry: {exc}", registry_path)
+        return
+
+    if data.get("version") != 1:
+        ctx.issue("critical", "Source exclusions registry version must be 1.", registry_path)
+        return
+    sources = data.get("sources")
+    if not isinstance(sources, dict):
+        ctx.issue("critical", "Source exclusions registry must contain object field: sources.", registry_path)
+        return
+
+    for rel_path, meta in sources.items():
+        if not isinstance(rel_path, str) or not rel_path.startswith("raw/") or not rel_path.endswith(".md"):
+            ctx.issue("critical", f"Excluded source path must be a raw markdown path: {rel_path}", registry_path)
+            continue
+        if rel_path in {"raw/_index.md", str(SOURCE_EXCLUSIONS_FILE), "raw/_uncompiled-source-coverage.md"}:
+            ctx.issue(
+                "critical",
+                f"Excluded source path cannot target registry/index files: {rel_path}",
+                registry_path,
+            )
+            continue
+        if not isinstance(meta, dict):
+            ctx.issue("critical", f"Excluded source metadata must be an object: {rel_path}", registry_path)
+            continue
+        reason = meta.get("reason")
+        if reason not in SOURCE_EXCLUSION_REASONS:
+            expected = ", ".join(sorted(SOURCE_EXCLUSION_REASONS))
+            ctx.issue(
+                "critical",
+                f"Invalid source exclusion reason for {rel_path}: {reason!r}; expected one of {expected}.",
+                registry_path,
+            )
+        excluded_at = str(meta.get("excluded_at", ""))
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", excluded_at):
+            ctx.issue("critical", f"Excluded source must have excluded_at as YYYY-MM-DD: {rel_path}", registry_path)
+
+        resolved = (ctx.root / rel_path).resolve()
+        try:
+            resolved.relative_to(ctx.root)
+        except ValueError:
+            ctx.issue("critical", f"Excluded source escapes wiki root: {rel_path}", registry_path)
+            continue
+        if not resolved.exists() or not resolved.is_file():
+            ctx.issue("critical", f"Excluded source does not exist: {rel_path}", registry_path)
+            continue
+        ctx.excluded_sources.add(resolved)
 
 
 def load_documents(ctx: LintContext) -> None:
@@ -880,6 +964,8 @@ def check_index_consistency(ctx: LintContext) -> None:
         for md_file in sorted(directory.glob("*.md")):
             if md_file.name == "_index.md":
                 continue
+            if directory.name == "raw" and md_file.name in RAW_METADATA_FILES:
+                continue
             if md_file.name not in text and md_file.resolve() not in resolved_link_targets:
                 missing_files.append(md_file)
         if ctx.fix and (missing_files or dead_links):
@@ -906,6 +992,8 @@ def regenerate_directory_index(ctx: LintContext, directory: Path) -> None:
     rows: list[str] = []
     for md_file in sorted(directory.glob("*.md")):
         if md_file.name == "_index.md":
+            continue
+        if directory.name == "raw" and md_file.name in RAW_METADATA_FILES:
             continue
         doc = ctx.documents.get(md_file.resolve())
         frontmatter = doc.frontmatter if doc else {}
@@ -1011,12 +1099,31 @@ def check_source_provenance(ctx: LintContext) -> None:
                 if not isinstance(sources, list):
                     ctx.issue("warning", "sources must be a list.", doc.path)
                     continue
+                resolved_sources: list[Path] = []
+                excluded_refs: list[str] = []
                 for source in sources:
                     resolved = resolve_source_ref(ctx, doc.path, str(source), wiki_source=True)
                     if resolved is None:
                         ctx.issue("warning", f"Source reference does not resolve: {source}.", doc.path)
                     elif is_under(resolved, ctx.root / "raw"):
-                        ctx.referenced_raw.add(resolved.resolve())
+                        resolved_raw = resolved.resolve()
+                        resolved_sources.append(resolved_raw)
+                        ctx.referenced_raw.add(resolved_raw)
+                        if resolved_raw in ctx.excluded_sources:
+                            excluded_refs.append(str(source))
+                if excluded_refs and resolved_sources:
+                    if all(path in ctx.excluded_sources for path in resolved_sources):
+                        ctx.issue(
+                            "warning",
+                            "Compiled article is backed only by excluded sources; classify as cleanup candidate before keeping it active.",
+                            doc.path,
+                        )
+                    else:
+                        ctx.issue(
+                            "warning",
+                            "Compiled article cites excluded source(s); remove those references and re-review against remaining sources.",
+                            doc.path,
+                        )
         elif rel.parts[0] == "inventory":
             sources = doc.frontmatter.get("sources")
             if sources and isinstance(sources, list):
@@ -1165,6 +1272,8 @@ def check_tags(ctx: LintContext) -> None:
 def check_coverage(ctx: LintContext) -> None:
     unreferenced: list[Path] = []
     for raw_file in content_markdown_files(ctx.root / "raw"):
+        if raw_file.resolve() in ctx.excluded_sources:
+            continue
         doc = ctx.documents.get(raw_file.resolve())
         if doc and "collection-manifest" in as_string_list(doc.frontmatter.get("tags")):
             continue
@@ -1178,11 +1287,11 @@ def check_coverage(ctx: LintContext) -> None:
 
 
 def create_or_update_coverage_reference(ctx: LintContext, unreferenced: list[Path]) -> None:
-    references_dir = ctx.root / "wiki" / "references"
-    references_dir.mkdir(parents=True, exist_ok=True)
-    coverage_path = references_dir / "uncompiled-source-coverage.md"
+    raw_dir = ctx.root / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    coverage_path = raw_dir / "_uncompiled-source-coverage.md"
     existing_sources: list[Path] = []
-    existing_doc = ctx.documents.get(coverage_path.resolve())
+    existing_doc = read_document(ctx, coverage_path) if coverage_path.exists() else None
     if existing_doc and isinstance(existing_doc.frontmatter.get("sources"), list):
         for source in existing_doc.frontmatter["sources"]:
             resolved = resolve_source_ref(ctx, coverage_path, str(source), wiki_source=True)
@@ -1199,7 +1308,7 @@ def create_or_update_coverage_reference(ctx: LintContext, unreferenced: list[Pat
         title = str(frontmatter.get("title") or raw_file.stem)
         summary = str(frontmatter.get("summary") or "")
         tags = ", ".join(as_string_list(frontmatter.get("tags")))
-        rel_link = markdown_relative_link(references_dir, raw_file)
+        rel_link = markdown_relative_link(raw_dir, raw_file)
         rows.append(
             f"| [{table_cell(title)}]({rel_link}) | `{ctx.rel(raw_file)}` | {table_cell(summary)} | {table_cell(tags)} |"
         )
@@ -1237,11 +1346,36 @@ def create_or_update_coverage_reference(ctx: LintContext, unreferenced: list[Pat
         ]
     )
     coverage_path.write_text(text, encoding="utf-8")
-    ctx.fixed(f"Updated coverage reference {ctx.rel(coverage_path)}.")
+    ctx.fixed(f"Updated coverage backlog {ctx.rel(coverage_path)}.")
     for raw_file in all_sources:
         ctx.referenced_raw.add(raw_file.resolve())
     load_documents(ctx)
-    regenerate_directory_index(ctx, references_dir)
+
+
+def migrate_legacy_coverage_reference(ctx: LintContext) -> None:
+    legacy = ctx.root / "wiki" / "references" / "uncompiled-source-coverage.md"
+    target = ctx.root / "raw" / "_uncompiled-source-coverage.md"
+    if not legacy.exists():
+        return
+    if not ctx.fix:
+        ctx.issue(
+            "warning",
+            "Legacy coverage backlog belongs at raw/_uncompiled-source-coverage.md.",
+            legacy,
+            fixable=True,
+        )
+        return
+    if target.exists():
+        ctx.issue(
+            "warning",
+            "Legacy coverage backlog exists but target already exists; merge manually.",
+            legacy,
+        )
+        return
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(legacy), str(target))
+    regenerate_directory_index(ctx, legacy.parent)
+    ctx.fixed("Moved legacy coverage backlog to raw/_uncompiled-source-coverage.md.")
 
 
 def markdown_relative_link(base_dir: Path, target: Path) -> str:
@@ -1535,6 +1669,9 @@ def run_lint(args: argparse.Namespace) -> int:
             print_text_report(ctx)
         return 1 if failed else 0
 
+    load_source_exclusions(ctx)
+    load_documents(ctx)
+    migrate_legacy_coverage_reference(ctx)
     load_documents(ctx)
     fix_legacy_wiki_frontmatter(ctx)
     check_frontmatter_schema(ctx)

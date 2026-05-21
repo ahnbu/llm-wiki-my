@@ -29,7 +29,7 @@ echo "  Created: missing-index (C1)"
 
 # C2: bad-frontmatter — invalid type enum
 copy_golden "bad-frontmatter"
-sed -i.bak 's/^type: articles$/type: invalid/' \
+perl -0pi.bak -e 's/^type: articles\r?$/type: invalid/m' \
   "$DEFECTS/bad-frontmatter/raw/articles/2026-01-01-sample-article.md"
 rm -f "$DEFECTS/bad-frontmatter/raw/articles/2026-01-01-sample-article.md.bak"
 echo "  Created: bad-frontmatter (C2)"

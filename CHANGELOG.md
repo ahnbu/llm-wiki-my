@@ -6,6 +6,7 @@
 
 | 일시 | 유형 | 범위 | 변경내용 | 변경사유 | 작성AI |
 |---|---|---|---|---|---|
+| 2026-05-21 19:25 | feat | lint | source exclusions registry와 raw coverage backlog 처리 추가 | - | Codex |
 | 2026-05-21 16:18 | docs | migration-docs | PowerShell llm-wiki 실행법과 운영 wiki 마이그레이션 검증 결과 문서화 | - | Codex |
 | 2026-05-21 15:52 | fix | split | source_file_name 기반 eBook split 파일명 생성과 기존 raw repair 계획 고정 | - | Codex |
 | 2026-05-21 14:39 | fix | lint | 공용 lint helper의 성공 log 기록 조건과 URL-encoded link 해석 보강 | - | Codex |

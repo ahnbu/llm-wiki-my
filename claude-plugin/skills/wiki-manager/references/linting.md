@@ -112,6 +112,7 @@ recorded as completed lint runs.
 ### C4b: Source Provenance (Warning)
 
 - [ ] All `sources:` entries in wiki article frontmatter point to existing raw files (no dangling references to deleted/retracted sources). Resolve entries with the Source Reference Resolution protocol in `wiki-structure.md`: parse the full YAML scalar/path, preserve whitespace, exact path first, then slug fallback. Never split on whitespace.
+- [ ] If a compiled article cites a source listed in `raw/_source-exclusions.json`, report it as cleanup review instead of dangling provenance. If the article also has non-excluded sources, recommend removing the excluded references and re-reviewing against remaining sources. If every resolved source is excluded, report the article as an active-wiki cleanup candidate. Do not auto-delete, auto-rewrite, or auto-remove provenance.
 - [ ] All local `sources:` entries in inventory record frontmatter point to
   existing files under `raw/`, `wiki/`, `output/`, `datasets/`, or `inventory/`.
   External URLs are allowed. Inventory provenance is operational state and must
@@ -128,10 +129,12 @@ recorded as completed lint runs.
 
 ### C6: Coverage (Suggestion)
 
-- [ ] Every raw source is referenced by at least one wiki article's `sources` field
+- [ ] Every non-excluded raw source is referenced by at least one wiki article's `sources` field
 - [ ] Raw sources tagged `collection-manifest` are exempt from this coverage check
+- [ ] Raw sources listed in `raw/_source-exclusions.json` are exempt from coverage backlog generation.
 - [ ] No wiki article has an empty `sources` field (C18 covers the per-article enforcement at Warning severity; this bullet stays as the wiki-wide coverage signal at Suggestion)
-- [ ] With `--fix`, create or update `wiki/references/uncompiled-source-coverage.md` when raw sources are otherwise unreferenced. This makes the coverage gap explicit as a compilation backlog; it is not a claim that the source has been fully synthesized elsewhere.
+- [ ] With `--fix`, create or update `raw/_uncompiled-source-coverage.md` when raw sources are otherwise unreferenced. This makes the coverage gap explicit as a raw-source processing backlog; it is not a compiled reference article and must not be added to `wiki/references/_index.md`.
+- [ ] If legacy `wiki/references/uncompiled-source-coverage.md` exists and `raw/_uncompiled-source-coverage.md` does not, move it to the raw metadata path during `--fix` and remove stale references from `wiki/references/_index.md`. If both files exist, warn and require manual merge.
 - [ ] Articles with overlapping tags that don't link to each other via "See Also" — suggest connection
 - [ ] Orphan articles: no incoming "See Also" links from other articles
 
@@ -243,7 +246,7 @@ Any file that is not in the canonical allowlist for its location is either a use
 | `HUB/topics/` | active topic directories plus `.archive/` |
 | `HUB/topics/.archive/` | archived topic directories |
 | Topic wiki root | `_index.md`, `config.md`, `log.md`, `raw/`, `wiki/`, `inventory/`, `datasets/`, `output/`, `inbox/`, `.obsidian/`, `.librarian/`, `.audit/`, `.research-session.json`, `.thesis-session.json`, `.session-events.jsonl`, `.session-checkpoint.json` |
-| `raw/` | `_index.md`, `articles/`, `papers/`, `repos/`, `notes/`, `data/` |
+| `raw/` | `_index.md`, `_source-exclusions.json`, `_uncompiled-source-coverage.md`, `articles/`, `papers/`, `repos/`, `notes/`, `data/` |
 | `wiki/` | `_index.md`, `concepts/`, `topics/`, `references/`, `theses/` |
 | `inventory/` | `_index.md`, `items/`, `candidates/`, `entities/`, `corpora/`, `views/` |
 | `datasets/` | `_index.md` + dataset slug directories |
@@ -479,7 +482,8 @@ Validates the hub-level archive lifecycle described in `archive.md`.
 | File not in index | Regenerate the affected directory index from current directory contents and frontmatter |
 | Dead index entry | Regenerate the affected directory index, dropping dead links/rows |
 | Statistics mismatch | Recalculate from actual file counts |
-| Raw sources with no compiled reference | Create/update `wiki/references/uncompiled-source-coverage.md` as an explicit synthesis backlog |
+| Raw sources with no compiled reference | Create/update `raw/_uncompiled-source-coverage.md` as a raw-source processing backlog |
+| Legacy coverage backlog in `wiki/references/` | Move to `raw/_uncompiled-source-coverage.md` when no target exists; otherwise warn for manual merge |
 | Missing bidirectional link | Add "See Also" entry to the article missing the backlink |
 | Empty frontmatter field | Infer safe schema fields where possible: category from directory, summary from explicit summary/first paragraph, dates from existing frontmatter |
 | Near-duplicate tags | Replace all instances with the canonical form |

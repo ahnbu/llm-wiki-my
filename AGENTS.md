@@ -154,6 +154,12 @@ summary: "2-3 sentence summary"
 ---
 ```
 
+### Source Exclusions
+
+`raw/_source-exclusions.json` records raw source files that are preserved but excluded from normal compile/query/coverage workflows. Do not move excluded sources by default; exact `sources:` paths must remain stable. Compile/query skip excluded sources unless the user explicitly includes them. Lint validates the registry and warns when active compiled articles still cite excluded sources.
+
+`raw/_uncompiled-source-coverage.md` is the generated backlog for raw sources that still need compilation review. It belongs under `raw/`, not `wiki/references/`, because it is source processing state rather than compiled knowledge.
+
 ### Wiki Article (wiki/)
 
 ```yaml
