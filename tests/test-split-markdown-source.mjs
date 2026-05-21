@@ -50,8 +50,8 @@ const dryRun = execFileSync(
   { encoding: "utf8" }
 );
 assert.match(dryRun, /"mode": "dry-run"/);
-assert.match(dryRun, /20260520_01_테스트책_00_프롤로그\.md/);
-await assert.rejects(fs.access(path.join(wiki, "raw", "notes", "20260520_01_테스트책_00_프롤로그.md")));
+assert.match(dryRun, /20260520_테스트책_00_프롤로그\.md/);
+await assert.rejects(fs.access(path.join(wiki, "raw", "notes", "20260520_테스트책_00_프롤로그.md")));
 
 execFileSync(
   "node",
@@ -60,20 +60,30 @@ execFileSync(
 );
 const files = await fs.readdir(path.join(wiki, "raw", "notes"));
 assert.deepEqual(files.sort(), [
-  "20260520_01_테스트책_00_프롤로그.md",
-  "20260520_02_테스트책_01_첫-하위-목차.md",
-  "20260520_03_테스트책_02_둘째-하위-목차.md",
-  "20260520_04_테스트책_99_에필로그.md",
+  "20260520_테스트책_00_프롤로그.md",
+  "20260520_테스트책_01_첫-하위-목차.md",
+  "20260520_테스트책_02_둘째-하위-목차.md",
+  "20260520_테스트책_99_에필로그.md",
 ]);
 
-const prologue = await fs.readFile(path.join(wiki, "raw", "notes", "20260520_01_테스트책_00_프롤로그.md"), "utf8");
+const prologue = await fs.readFile(path.join(wiki, "raw", "notes", "20260520_테스트책_00_프롤로그.md"), "utf8");
 assert.match(prologue, /표지 본문/);
 assert.match(prologue, /프롤로그 본문/);
 
-const firstSection = await fs.readFile(path.join(wiki, "raw", "notes", "20260520_02_테스트책_01_첫-하위-목차.md"), "utf8");
+const firstSection = await fs.readFile(path.join(wiki, "raw", "notes", "20260520_테스트책_01_첫-하위-목차.md"), "utf8");
 assert.match(firstSection, /split_parent_heading: "Chapter 01\. 첫 장"/);
 assert.match(firstSection, /book_title: "테스트 책"/);
 assert.match(firstSection, /### 01 첫 하위 목차/);
 assert.match(firstSection, /첫 본문/);
+
+execFileSync(
+  "node",
+  [script, "--wiki", wiki, "--source", source, "--title", "테스트 책", "--source-key", "테스트책", "--split-heading", "3", "--date", "20260520", "--apply"],
+  { encoding: "utf8" }
+);
+
+const filesAfterSecondRun = await fs.readdir(path.join(wiki, "raw", "notes"));
+assert.ok(filesAfterSecondRun.includes("20260520_테스트책_00_프롤로그_02.md"));
+assert.ok(filesAfterSecondRun.includes("20260520_테스트책_01_첫-하위-목차_02.md"));
 
 console.log("PASS: split markdown source");

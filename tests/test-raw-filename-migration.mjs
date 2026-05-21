@@ -31,6 +31,22 @@ summary: "기존 파일명 마이그레이션 테스트"
 );
 
 await fs.writeFile(
+  path.join(wiki, "raw", "notes", "20260520_01_이미-순번-있는-노트.md"),
+  `---
+title: "이미 순번 있는 노트"
+source: "MANUAL"
+type: notes
+ingested: 2026-05-20
+tags: [test]
+summary: "기존 YYYYMMDD_NN 파일명 마이그레이션 테스트"
+---
+
+# 이미 순번 있는 노트
+`,
+  "utf8"
+);
+
+await fs.writeFile(
   path.join(wiki, "wiki", "concepts", "sample.md"),
   `---
 title: Sample
@@ -62,17 +78,19 @@ assert.match(dryRun, /"mode": "dry-run"/);
 await fs.access(path.join(wiki, "raw", "notes", "2026-05-20-old-note.md"));
 
 execFileSync("node", [script, "--wiki", wiki, "--apply"], { encoding: "utf8" });
-await fs.access(path.join(wiki, "raw", "notes", "20260520_01_기존-노트.md"));
+await fs.access(path.join(wiki, "raw", "notes", "20260520_기존-노트.md"));
 await assert.rejects(fs.access(path.join(wiki, "raw", "notes", "2026-05-20-old-note.md")));
+await fs.access(path.join(wiki, "raw", "notes", "20260520_이미-순번-있는-노트.md"));
+await assert.rejects(fs.access(path.join(wiki, "raw", "notes", "20260520_01_이미-순번-있는-노트.md")));
 
 const article = await fs.readFile(path.join(wiki, "wiki", "concepts", "sample.md"), "utf8");
-assert.match(article, /raw\/notes\/20260520_01_기존-노트\.md/);
-assert.match(article, /\.\.\/\.\.\/raw\/notes\/20260520_01_기존-노트\.md/);
+assert.match(article, /raw\/notes\/20260520_기존-노트\.md/);
+assert.match(article, /\.\.\/\.\.\/raw\/notes\/20260520_기존-노트\.md/);
 
 const rawIndex = await fs.readFile(path.join(wiki, "raw", "notes", "_index.md"), "utf8");
-assert.match(rawIndex, /20260520_01_기존-노트\.md/);
+assert.match(rawIndex, /20260520_기존-노트\.md/);
 
 const log = await fs.readFile(path.join(wiki, "log.md"), "utf8");
-assert.match(log, /Raw filenames normalized to YYYYMMDD_NN/);
+assert.match(log, /Raw filenames normalized to YYYYMMDD/);
 
 console.log("PASS: raw filename migration");

@@ -81,15 +81,21 @@ function sanitizeSectionHeading(input) {
   return sanitize(input.replace(/^\d{1,3}\s+/, ""), "section");
 }
 
-async function nextSequence(rawDir, ymd) {
-  const entries = await fs.readdir(rawDir, { withFileTypes: true }).catch(() => []);
-  let max = 0;
-  for (const entry of entries) {
-    if (!entry.isFile()) continue;
-    const match = entry.name.match(new RegExp(`^${ymd}_(\\d{2})_`));
-    if (match) max = Math.max(max, Number(match[1]));
+async function uniqueFilename(rawDir, baseName, reserved = new Set()) {
+  const parsed = path.parse(baseName);
+  const existing = new Set(
+    (await fs.readdir(rawDir, { withFileTypes: true }).catch(() => []))
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name)
+  );
+  let candidate = baseName;
+  let suffix = 2;
+  while (existing.has(candidate) || reserved.has(candidate)) {
+    candidate = `${parsed.name}_${String(suffix).padStart(2, "0")}${parsed.ext}`;
+    suffix += 1;
   }
-  return max + 1;
+  reserved.add(candidate);
+  return candidate;
 }
 
 function pushNonEmpty(parts, part) {
@@ -199,13 +205,14 @@ async function main() {
   if (parts.length === 0) throw new Error(`No heading level ${args.level} sections found`);
 
   const sourceKey = sanitize(args.sourceKey);
-  let seq = await nextSequence(rawDir, args.date);
   let regular = 1;
+  const reserved = new Set();
   const sourceForFrontmatter = sourcePath.replaceAll("\\", "/");
-  const files = parts.map((part) => {
+  const files = [];
+  for (const part of parts) {
     const partLabel = part.specialIndex || String(regular++).padStart(2, "0");
-    const seqLabel = String(seq++).padStart(2, "0");
-    const filename = `${args.date}_${seqLabel}_${sourceKey}_${partLabel}_${sanitizeSectionHeading(part.heading)}.md`;
+    const baseName = `${args.date}_${sourceKey}_${partLabel}_${sanitizeSectionHeading(part.heading)}.md`;
+    const filename = await uniqueFilename(rawDir, baseName, reserved);
     const relPath = path.posix.join("raw", args.type, filename);
     const body =
       buildFrontmatter({
@@ -217,8 +224,8 @@ async function main() {
         level: args.level,
         indexLabel: partLabel,
       }) + `${part.lines.join("\n").trim()}\n`;
-    return { relPath, body, heading: part.heading, parent: part.parent || null };
-  });
+    files.push({ relPath, body, heading: part.heading, parent: part.parent || null });
+  }
 
   console.log(
     JSON.stringify(

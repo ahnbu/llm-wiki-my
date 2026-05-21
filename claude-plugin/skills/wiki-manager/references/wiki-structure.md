@@ -390,7 +390,8 @@ staleness checks) must resolve source references with this protocol:
    stem by lowercasing, replacing whitespace/underscores with hyphens, removing
    non-alphanumeric characters except hyphens, collapsing repeated hyphens, and
    trimming leading/trailing hyphens. Also compare candidate stems after removing
-   a leading `YYYY-MM-DD-` date prefix or this fork's `YYYYMMDD_NN_` prefix. A
+   a leading `YYYY-MM-DD-` date prefix, the current `YYYYMMDD_` prefix, or this
+   fork's previous `YYYYMMDD_NN_` prefix. A
    single match resolves; zero or multiple matches must be reported as unresolved
    or ambiguous.
 4. Do not rename raw files during resolution. Raw immutability means old or
@@ -476,12 +477,12 @@ For Korean wiki content, output artifact `title`, filename topic portion, sectio
 
 ## File Naming
 
-- **Raw sources**: `YYYYMMDD_NN_한국어-요약명.md` by default for Korean workspaces. `YYYYMMDD` uses the KST date. `NN` is the next 2-digit sequence in the target `raw/{type}/` directory for that date.
+- **Raw sources**: `YYYYMMDD_한국어-요약명.md` by default for Korean workspaces. `YYYYMMDD` uses the KST date. If the target filename already exists, append `_02`, `_03`, and so on before `.md`; do not create daily sequence numbers.
 - **Wiki articles**: `한국어_문서명.md` or `한국어-문서명.md` without a date prefix; these are living documents.
 - **Inventory records**: keep the existing durable-record naming style unless a Korean workspace explicitly creates Korean tracking records.
 - **Dataset manifests**: keep `datasets/descriptive-slug/MANIFEST.md` for dataset compatibility.
 - **Output artifacts**: `{type}-한국어-주제명-YYYY-MM-DD.md` by default when generated from Korean wiki content.
-- **Korean filename policy**: Allowed characters for Korean wiki outputs are Korean letters, ASCII letters and digits, `_`, `-`, and `.`. Use `_` for structural separation such as date, sequence, source key, and split part number; use `-` for word separation inside human titles; remove forbidden characters and increment `NN` on collisions.
+- **Korean filename policy**: Allowed characters for Korean wiki outputs are Korean letters, ASCII letters and digits, `_`, `-`, and `.`. Use `_` for structural separation such as date, source key, and split part number; use `-` for word separation inside human titles; remove forbidden characters and append `_02`, `_03`, and so on on collisions.
 - Preserve existing raw paths and legacy filenames. The Korean filename rule applies to newly generated files.
 
 ## Tag Convention

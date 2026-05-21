@@ -1268,6 +1268,10 @@ Expected: filename policy, split protocol, migration script/test, validation tes
 
 작성 시점: 2026-05-20 KST
 
+> [!NOTE]
+> 이 섹션의 `마이그레이션 완료` 표기는 실제 운영 wiki raw 파일 rename 완료가 아니라, migration script 구현과 fixture 기반 테스트 통과를 의미한다.
+> 실제 대상 `C:/Users/ahnbu/cowork/02_강의/202606_다우기술_신입_7H/.wiki`의 raw 31개 파일 migration은 [[20260521_01_LLM-Wiki-raw-파일명-NN-제거-구현계획]]에서 별도 수행 대상으로 반영한다.
+
 ### 구현 완료
 
 - `YYYYMMDD_NN_한국어-요약명.md` raw filename 정책을 `ingest`, `ingestion`, `wiki-structure` 문서에 반영했다.
@@ -1334,6 +1338,10 @@ raw/notes/20260520_07_도그냥PO_06_헤드헌터보다-유능한-커피-한-잔
 ## Done-Check-Lite 검수 결과
 
 작성 시점: 2026-05-20 KST
+
+> [!NOTE]
+> 아래 `전체 상태: 완료` 판정은 당시 확인 가능한 기능 구현·문서·테스트 fixture 기준 판정이다.
+> 실제 운영 wiki의 기존 raw 파일 rename과 참조 rewrite는 수행되지 않았으며, 관련 migration은 [[20260521_01_LLM-Wiki-raw-파일명-NN-제거-구현계획]]에서 다룬다.
 
 ### 최종 판정
 

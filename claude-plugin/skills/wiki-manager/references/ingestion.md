@@ -289,7 +289,7 @@ indexes the result.
 
 4. Verify every generated file exists under `raw/notes/`.
 5. Update `raw/notes/_index.md`, `raw/_index.md`, and master `_index.md`.
-6. Append one log entry summarizing the split batch, for example `## [YYYY-MM-DD] ingest | Split Book Title into 12 notes (raw/notes/20260520_01_...)`.
+6. Append one log entry summarizing the split batch, for example `## [YYYY-MM-DD] ingest | Split Book Title into 12 notes (raw/notes/20260520_sourcekey_...)`.
 7. Use `type: notes` by default. Do not create `book`, `books`, or `raw/books/`.
 8. The script adds optional split provenance frontmatter:
 
@@ -326,16 +326,18 @@ the full title in frontmatter:
 @wiki ingest "C:/Users/ahnbu/cowork/06_연구/= e북 제작/_최종본_기획제안/txt/도그냥PO_20251125_정리본.md" --type notes --title "IT 기획자에서 프로덕트 오너로 점프하기" --source-key "도그냥PO" --split-heading 3 --local
 ```
 
-If this is the first notes ingest on 2026-05-20, generated filenames should look like:
+Generic split filename shape: `YYYYMMDD_sourcekey_00_프롤로그.md`.
+
+Generated filenames should look like:
 
 ```markdown
-raw/notes/20260520_01_도그냥PO_00_프롤로그.md
-raw/notes/20260520_02_도그냥PO_01_우물-안-일잘러-회사-밖에서도-일잘러를-꿈꾸다.md
-raw/notes/20260520_03_도그냥PO_02_누가-우물-안-일잘러를-만드나.md
-raw/notes/20260520_04_도그냥PO_03_우물-안-일잘러의-위기.md
-raw/notes/20260520_05_도그냥PO_04_우물-탈출을-방해하는-에고와의-싸움.md
-raw/notes/20260520_06_도그냥PO_05_터부시하는-부정적-감정이-성장을-만들어-낼-때.md
-raw/notes/20260520_07_도그냥PO_06_헤드헌터보다-유능한-커피-한-잔_커피챗.md
+raw/notes/20260520_도그냥PO_00_프롤로그.md
+raw/notes/20260520_도그냥PO_01_우물-안-일잘러-회사-밖에서도-일잘러를-꿈꾸다.md
+raw/notes/20260520_도그냥PO_02_누가-우물-안-일잘러를-만드나.md
+raw/notes/20260520_도그냥PO_03_우물-안-일잘러의-위기.md
+raw/notes/20260520_도그냥PO_04_우물-탈출을-방해하는-에고와의-싸움.md
+raw/notes/20260520_도그냥PO_05_터부시하는-부정적-감정이-성장을-만들어-낼-때.md
+raw/notes/20260520_도그냥PO_06_헤드헌터보다-유능한-커피-한-잔_커피챗.md
 ```
 
 For `## 프롤로그` and `## 에필로그`, there is no lower-level numbered chapter
@@ -397,30 +399,27 @@ The `inbox/` directory is a drop zone. Users dump files there via Finder, `cp`, 
 
 ## Filename Generation
 
-1. Generate raw source filenames as `YYYYMMDD_NN_한국어-요약명.md` by default.
+1. Generate raw source filenames as `YYYYMMDD_한국어-요약명.md` by default.
 2. Use the KST date for `YYYYMMDD`.
-3. Generate `NN` from the target `raw/{type}/` directory:
-   - scan existing files matching `^YYYYMMDD_[0-9][0-9]_.*\.md$`
-   - take the highest sequence for that date
-   - use the next number, zero-padded to 2 digits
-4. For batch or split ingestion, reserve consecutive `NN` values in processing order.
-5. Keep the human title concise enough that the full filename remains readable.
-6. Allowed characters are Korean letters, ASCII letters and digits, `_`, `-`, and `.`.
-7. Use `_` for structural separation such as date, sequence, source key, and part number. Use `-` only inside the human title when useful.
-8. Example: "Attention Is All You Need" ingested on 2026-05-20 as the first paper of the day becomes `20260520_01_Attention-Is-All-You-Need.md`.
-9. Example: "LLM 위키 설계 메모" ingested as the second note of the day becomes `20260520_02_LLM-위키-설계-메모.md`.
-10. This canonicalization applies to new ingests. If a legacy or imported raw file already exists with spaces, title case, or an older `YYYY-MM-DD-` prefix, do not rename it during later maintenance; provenance workflows resolve exact paths and slug fallbacks per `wiki-structure.md` Source Reference Resolution.
+3. Keep the human title concise enough that the full filename remains readable.
+4. Allowed characters are Korean letters, ASCII letters and digits, `_`, `-`, and `.`.
+5. Use `_` for structural separation such as date, source key, and split part number. Use `-` only inside the human title when useful.
+6. If the target filename already exists, append `_02`, `_03`, and so on before `.md`. Do not create daily sequence numbers.
+7. Example: "Attention Is All You Need" ingested on 2026-05-20 becomes `20260520_Attention-Is-All-You-Need.md`.
+8. Example: "LLM 위키 설계 메모" ingested on 2026-05-20 becomes `20260520_LLM-위키-설계-메모.md`.
+9. This canonicalization applies to new ingests. If a legacy or imported raw file already exists with spaces, title case, an older `YYYY-MM-DD-` prefix, or this fork's previous `YYYYMMDD_NN_` prefix, do not rename it during later maintenance; provenance workflows resolve exact paths and slug fallbacks per `wiki-structure.md` Source Reference Resolution.
 
 ## Raw Filename Migration
 
-Existing raw files may use legacy filenames such as `YYYY-MM-DD-slug.md`. Do not
-rename them during ordinary ingest, lint, compile, query, or refresh. Rename only
-when the user explicitly requests migration.
+Existing raw files may use legacy filenames such as `YYYY-MM-DD-slug.md` or this
+fork's previous `YYYYMMDD_NN_slug.md`. Do not rename them during ordinary ingest,
+lint, compile, query, or refresh. Rename only when the user explicitly requests
+migration.
 
 Migration must be deterministic and script-driven:
 
 1. Run `node scripts/migrate-raw-filenames.mjs --wiki <wiki-root> --dry-run`.
-2. Review the mapping from old raw paths to new `YYYYMMDD_NN_...` paths.
+2. Review the mapping from old raw paths to new `YYYYMMDD_...` paths.
 3. If the dry-run reports collisions, missing files, or ambiguous references, stop and fix those first.
 4. Run `node scripts/migrate-raw-filenames.mjs --wiki <wiki-root> --apply` only after dry-run approval.
 5. Rewrite exact raw path references in `wiki/`, `output/`, `raw/_index.md`, `raw/{type}/_index.md`, and `_index.md`.

@@ -38,8 +38,8 @@ function parseArgs(argv) {
 function toIsoDateFromFilename(name) {
   const dashed = name.match(/^(\d{4})-(\d{2})-(\d{2})-/);
   if (dashed) return `${dashed[1]}-${dashed[2]}-${dashed[3]}`;
-  const undashed = name.match(/^(\d{8})_(\d{2})_/);
-  if (undashed) return `${undashed[1].slice(0, 4)}-${undashed[1].slice(4, 6)}-${undashed[1].slice(6, 8)}`;
+  const ymd = name.match(/^(\d{8})_/);
+  if (ymd) return `${ymd[1].slice(0, 4)}-${ymd[1].slice(4, 6)}-${ymd[1].slice(6, 8)}`;
   return null;
 }
 
@@ -59,6 +59,30 @@ function sanitizeTitle(input) {
       .replace(/^[-_.]+|[-_.]+$/g, "")
       .slice(0, 80) || "source"
   );
+}
+
+function isCanonicalRawFilename(name) {
+  return /^\d{8}_(?!\d{2}_).+\.md$/.test(name);
+}
+
+function titleFromFilename(name) {
+  return name
+    .replace(/\.md$/, "")
+    .replace(/^\d{4}-\d{2}-\d{2}-/, "")
+    .replace(/^\d{8}_\d{2}_/, "")
+    .replace(/^\d{8}_/, "");
+}
+
+function uniqueName(baseName, used) {
+  const parsed = path.parse(baseName);
+  let candidate = baseName;
+  let suffix = 2;
+  while (used.has(candidate)) {
+    candidate = `${parsed.name}_${String(suffix).padStart(2, "0")}${parsed.ext}`;
+    suffix += 1;
+  }
+  used.add(candidate);
+  return candidate;
 }
 
 function frontmatterValue(text, key) {
@@ -90,16 +114,9 @@ async function buildMapping(wikiRoot) {
     const dir = path.join(wikiRoot, "raw", type);
     const files = await fs.readdir(dir, { withFileTypes: true }).catch(() => []);
     const used = new Set(files.filter((file) => file.isFile()).map((file) => file.name));
-    const byDateSeq = new Map();
-    for (const name of used) {
-      const match = name.match(/^(\d{8})_(\d{2})_/);
-      if (!match) continue;
-      const current = byDateSeq.get(match[1]) || 0;
-      byDateSeq.set(match[1], Math.max(current, Number(match[2])));
-    }
     for (const entry of files) {
       if (!entry.isFile() || !entry.name.endsWith(".md") || entry.name === "_index.md") continue;
-      if (/^\d{8}_\d{2}_/.test(entry.name)) continue;
+      if (isCanonicalRawFilename(entry.name)) continue;
       const oldAbs = path.join(dir, entry.name);
       const text = await fs.readFile(oldAbs, "utf8");
       const isoDate = frontmatterValue(text, "ingested") || toIsoDateFromFilename(entry.name);
@@ -107,12 +124,8 @@ async function buildMapping(wikiRoot) {
         throw new Error(`Cannot determine ingested date for ${oldAbs}`);
       }
       const ymd = toYmd(isoDate);
-      const next = (byDateSeq.get(ymd) || 0) + 1;
-      byDateSeq.set(ymd, next);
-      const title = sanitizeTitle(frontmatterValue(text, "title") || entry.name.replace(/\.md$/, ""));
-      const newName = `${ymd}_${String(next).padStart(2, "0")}_${title}.md`;
-      if (used.has(newName)) throw new Error(`Collision: ${path.join(dir, newName)}`);
-      used.add(newName);
+      const title = sanitizeTitle(frontmatterValue(text, "title") || titleFromFilename(entry.name));
+      const newName = uniqueName(`${ymd}_${title}.md`, used);
       mapping.push({
         oldRel: path.relative(wikiRoot, oldAbs).replaceAll("\\", "/"),
         newRel: path.relative(wikiRoot, path.join(dir, newName)).replaceAll("\\", "/"),
@@ -163,7 +176,7 @@ async function main() {
 
   await fs.appendFile(
     path.join(wikiRoot, "log.md"),
-    `\n## [${kstIsoDate()}] migrate | Raw filenames normalized to YYYYMMDD_NN (${mapping.length} files)\n`,
+    `\n## [${kstIsoDate()}] migrate | Raw filenames normalized to YYYYMMDD (${mapping.length} files)\n`,
     "utf8"
   );
 }
