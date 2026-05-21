@@ -50,6 +50,17 @@ fi
 
 expect_success "golden wiki passes local lint" "$CLI" lint "$GOLDEN"
 
+tmpdir="$(mktemp -d)"
+trap 'rm -rf "$tmpdir"' EXIT
+
+asset_wiki="$tmpdir/raw-image-assets"
+mkdir "$asset_wiki"
+cp -R "$GOLDEN/." "$asset_wiki/"
+mkdir -p "$asset_wiki/raw/_images/articles"
+printf "fake image bytes\n" > "$asset_wiki/raw/_images/articles/sample.png"
+
+expect_success "raw _images asset directory passes local lint" "$CLI" lint "$asset_wiki"
+
 expect_failure_contains \
   "missing-index fixture fails local lint" \
   "Required _index.md is missing" \
@@ -60,8 +71,6 @@ expect_failure_contains \
   "Invalid type" \
   "$CLI" lint "$SCRIPT_DIR/fixtures/defects/bad-frontmatter"
 
-tmpdir="$(mktemp -d)"
-trap 'rm -rf "$tmpdir"' EXIT
 mkdir "$tmpdir/wiki"
 cp -R "$GOLDEN/." "$tmpdir/wiki/"
 mv "$tmpdir/wiki/wiki/concepts/sample-concept.md" \

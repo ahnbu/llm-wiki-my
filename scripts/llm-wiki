@@ -86,6 +86,7 @@ ROOT_ALLOWED = {
 HUB_ALLOWED = {"wikis.json", "_index.md", "log.md", "topics"}
 RAW_ALLOWED = {
     "_index.md",
+    "_images",
     "_source-exclusions.json",
     "_uncompiled-source-coverage.md",
     "articles",

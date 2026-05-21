@@ -76,6 +76,7 @@ All content lives here. One topic per wiki. Isolated indexes, focused queries.
 │       └── queries/
 ├── raw/                           # Immutable source material
 │   ├── _index.md
+│   ├── _images/                   # Optional source-adjacent image assets
 │   ├── articles/*.md
 │   ├── papers/*.md
 │   ├── repos/*.md

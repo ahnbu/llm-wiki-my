@@ -67,6 +67,9 @@ HUB/topics/<name>/
 │       └── queries/_index.md      # Lazy: created for query recipes
 ├── raw/                           # Immutable source material
 │   ├── _index.md
+│   ├── _images/                   # Optional source-adjacent image assets
+│   │   └── articles/
+│   │       └── *.png, *.jpg, *.webp
 │   ├── articles/
 │   │   ├── _index.md
 │   │   └── *.md

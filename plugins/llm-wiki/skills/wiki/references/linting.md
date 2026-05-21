@@ -246,11 +246,12 @@ Any file that is not in the canonical allowlist for its location is either a use
 | `HUB/topics/` | active topic directories plus `.archive/` |
 | `HUB/topics/.archive/` | archived topic directories |
 | Topic wiki root | `_index.md`, `config.md`, `log.md`, `raw/`, `wiki/`, `inventory/`, `datasets/`, `output/`, `inbox/`, `.obsidian/`, `.librarian/`, `.audit/`, `.research-session.json`, `.thesis-session.json`, `.session-events.jsonl`, `.session-checkpoint.json` |
-| `raw/` | `_index.md`, `_source-exclusions.json`, `_uncompiled-source-coverage.md`, `articles/`, `papers/`, `repos/`, `notes/`, `data/` |
+| `raw/` | `_index.md`, `_images/`, `_source-exclusions.json`, `_uncompiled-source-coverage.md`, `articles/`, `papers/`, `repos/`, `notes/`, `data/` |
 | `wiki/` | `_index.md`, `concepts/`, `topics/`, `references/`, `theses/` |
 | `inventory/` | `_index.md`, `items/`, `candidates/`, `entities/`, `corpora/`, `views/` |
 | `datasets/` | `_index.md` + dataset slug directories |
 | `raw/<type>/` | `_index.md` + `*.md` files with valid frontmatter |
+| `raw/_images/` | Optional source-adjacent image assets, commonly grouped by raw type such as `articles/`; no `_index.md` required |
 | `wiki/<category>/` | `_index.md` + `*.md` files with valid frontmatter |
 | `inventory/{items,candidates,entities,corpora}/` | `_index.md` + `*.md` files with valid inventory record frontmatter |
 | `inventory/views/` | `_index.md` + derived `*.md` view files with lightweight view frontmatter |
