@@ -1,3 +1,11 @@
+---
+title: LLM Wiki ingestion protocol
+created: 2026-05-21 12:20
+session_id: codex:019e482e-1b1f-7b01-b187-ff0bdb2d07fa
+session_path: C:/Users/ahnbu/.codex/sessions/2026/05/21/rollout-2026-05-21T10-37-21-019e482e-1b1f-7b01-b187-ff0bdb2d07fa.jsonl
+ai: codex
+---
+
 # Ingestion Protocol
 
 ## Overview
@@ -274,24 +282,35 @@ Use this only when the user passes `--split-heading <level>`. The split itself
 is performed by `scripts/split-markdown-source.mjs`; the agent verifies and
 indexes the result.
 
-1. Run dry-run:
+1. Before applying a split for long Markdown/eBook sources, run recommendation:
+
+   ```powershell
+   node scripts/recommend-markdown-split.mjs --source <file.md> --levels 2,3 --soft-limit 20000 --hard-limit 30000 --manifest <manifest.json>
+   ```
+
+   Use the recommendation report to choose the default `--split-heading` level.
+   If only 1-2 chunks exceed the hard warning threshold, keep the default level
+   and treat those chunks as exception split targets rather than lowering the
+   whole book level.
+
+2. Run dry-run:
 
    ```powershell
    node scripts/split-markdown-source.mjs --wiki <wiki-root> --source <file.md> --title "<title>" --source-key "<short-key>" --type notes --split-heading <level> --dry-run
    ```
 
-2. Confirm the output mapping.
-3. Run apply:
+3. Confirm the output mapping.
+4. Run apply:
 
    ```powershell
    node scripts/split-markdown-source.mjs --wiki <wiki-root> --source <file.md> --title "<title>" --source-key "<short-key>" --type notes --split-heading <level> --apply
    ```
 
-4. Verify every generated file exists under `raw/notes/`.
-5. Update `raw/notes/_index.md`, `raw/_index.md`, and master `_index.md`.
-6. Append one log entry summarizing the split batch, for example `## [YYYY-MM-DD] ingest | Split Book Title into 12 notes (raw/notes/20260520_sourcekey_...)`.
-7. Use `type: notes` by default. Do not create `book`, `books`, or `raw/books/`.
-8. The script adds optional split provenance frontmatter:
+5. Verify every generated file exists under `raw/notes/`.
+6. Update `raw/notes/_index.md`, `raw/_index.md`, and master `_index.md`.
+7. Append one log entry summarizing the split batch, for example `## [YYYY-MM-DD] ingest | Split Book Title into 12 notes (raw/notes/20260520_sourcekey_...)`.
+8. Use `type: notes` by default. Do not create `book`, `books`, or `raw/books/`.
+9. The script adds optional split provenance frontmatter:
 
    ```yaml
    book_title: "Full book title"
@@ -299,10 +318,20 @@ indexes the result.
    split_source: "original filepath or URL"
    split_heading_level: 3
    split_part_index: 1
+   split_part_label: "01"
    split_part_total: 12
    split_heading: "Chapter subheading"
+   split_unit_kind: target-heading
+   split_effective_heading_level: 3
    split_parent_heading: "Chapter 01. Parent heading"
    ```
+
+When splitting at H3, H2 sections with no H3 descendants are effective split
+units. Parent headings with direct body before child headings create a
+parent-intro unit so no source text is lost. The same effective split unit
+calculation must be used by recommendation and split generation. Exception
+split labels such as `13-1` and `13-2` require explicit boundaries in the
+manifest; never infer invisible subheadings automatically.
 
 #### Example: split below chapter level
 

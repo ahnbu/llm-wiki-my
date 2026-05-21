@@ -86,4 +86,121 @@ const filesAfterSecondRun = await fs.readdir(path.join(wiki, "raw", "notes"));
 assert.ok(filesAfterSecondRun.includes("20260520_테스트책_00_프롤로그_02.md"));
 assert.ok(filesAfterSecondRun.includes("20260520_테스트책_01_첫-하위-목차_02.md"));
 
+const leafRoot = path.join(os.tmpdir(), `llm-wiki-split-leaf-${Date.now()}-${process.pid}`);
+const leafWiki = path.join(leafRoot, ".wiki");
+const leafSource = path.join(leafRoot, "leaf-book.md");
+await fs.mkdir(path.join(leafWiki, "raw", "notes"), { recursive: true });
+await fs.writeFile(
+  leafSource,
+  `## 추천 서문
+서문 본문
+
+## Part 1. 본문
+개관 직하 본문
+
+### 01 첫 장
+첫 장 본문
+`,
+  "utf8"
+);
+
+execFileSync(
+  "node",
+  [script, "--wiki", leafWiki, "--source", leafSource, "--title", "테스트 책", "--source-key", "테스트책", "--split-heading", "3", "--date", "20260520", "--apply"],
+  { encoding: "utf8" }
+);
+
+const leafFiles = await fs.readdir(path.join(leafWiki, "raw", "notes"));
+assert.deepEqual(leafFiles.sort(), [
+  "20260520_테스트책_01_추천-서문.md",
+  "20260520_테스트책_02_Part-1-본문-도입부.md",
+  "20260520_테스트책_03_첫-장.md",
+]);
+
+const leafIntro = await fs.readFile(path.join(leafWiki, "raw", "notes", "20260520_테스트책_02_Part-1-본문-도입부.md"), "utf8");
+assert.match(leafIntro, /split_unit_kind: parent-intro/);
+assert.match(leafIntro, /개관 직하 본문/);
+assert.doesNotMatch(leafIntro, /첫 장 본문/);
+
+const exceptionRoot = path.join(os.tmpdir(), `llm-wiki-split-exception-${Date.now()}-${process.pid}`);
+const exceptionWiki = path.join(exceptionRoot, ".wiki");
+const exceptionSource = path.join(exceptionRoot, "exception-book.md");
+const exceptionManifest = path.join(exceptionRoot, "manifest.json");
+await fs.mkdir(path.join(exceptionWiki, "raw", "notes"), { recursive: true });
+await fs.writeFile(
+  exceptionSource,
+  `## Chapter 13. 큰 장
+
+첫 번째 예외 본문
+
+두 번째 예외 본문
+`,
+  "utf8"
+);
+await fs.writeFile(
+  exceptionManifest,
+  JSON.stringify(
+    {
+      sources: [
+        {
+          sourcePath: exceptionSource.replaceAll("\\", "/"),
+          generatedPartLabels: [
+            {
+              unitId: "h1",
+              heading: "Chapter 13. 큰 장",
+              defaultLabel: "13",
+              generatedLabels: ["13-1", "13-2"],
+            },
+          ],
+          explicitExceptionSplits: [
+            {
+              unitId: "h1",
+              parts: [
+                { heading: "큰 장 첫 번째", startLine: 1, endLine: 3 },
+                { heading: "큰 장 두 번째", startLine: 5, endLine: 5 },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    null,
+    2
+  ),
+  "utf8"
+);
+
+execFileSync(
+  "node",
+  [
+    script,
+    "--wiki",
+    exceptionWiki,
+    "--source",
+    exceptionSource,
+    "--title",
+    "테스트 책",
+    "--source-key",
+    "테스트책",
+    "--split-heading",
+    "2",
+    "--manifest",
+    exceptionManifest,
+    "--date",
+    "20260520",
+    "--apply",
+  ],
+  { encoding: "utf8" }
+);
+
+const exceptionFiles = await fs.readdir(path.join(exceptionWiki, "raw", "notes"));
+assert.deepEqual(exceptionFiles.sort(), [
+  "20260520_테스트책_13-1_큰-장-첫-번째.md",
+  "20260520_테스트책_13-2_큰-장-두-번째.md",
+]);
+
+const exceptionFirst = await fs.readFile(path.join(exceptionWiki, "raw", "notes", "20260520_테스트책_13-1_큰-장-첫-번째.md"), "utf8");
+assert.match(exceptionFirst, /split_part_label: "13-1"/);
+assert.match(exceptionFirst, /split_unit_kind: exception-child/);
+
 console.log("PASS: split markdown source");

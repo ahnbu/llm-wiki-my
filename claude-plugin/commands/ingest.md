@@ -1,4 +1,9 @@
 ---
+title: LLM Wiki ingest command
+created: 2026-05-21 12:20
+session_id: codex:019e482e-1b1f-7b01-b187-ff0bdb2d07fa
+session_path: C:/Users/ahnbu/.codex/sessions/2026/05/21/rollout-2026-05-21T10-37-21-019e482e-1b1f-7b01-b187-ff0bdb2d07fa.jsonl
+ai: codex
 description: "Ingest source material into an active wiki. Accepts URLs, file paths, PDFs, freeform text, or processes the inbox. Supports tweets via Grok MCP."
 argument-hint: "<url|filepath|\"text\"> [--type articles|papers|repos|notes|data] [--title \"Title\"] [--source-key <short-key>] [--split-heading <level>] [--inbox] [--keep] [--wiki <name>] [--local] [--auto-classify] [--new-topic <name>] [--project <slug>] [--include-archived]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Bash(wc:*), Bash(date:*), Bash(mv:*), Bash(mkdir:*), Bash(basename:*), Bash(file:*), Bash(curl:*), Bash(mktemp:*), Bash(rm:*), Bash(pdftotext:*), Bash(python3:*), WebFetch, WebSearch
@@ -192,6 +197,8 @@ If `--split-heading <level>` is present, treat the input as one long Markdown so
 - `level` must be an integer from 1 to 6.
 - Use `notes` by default for books and chapters, storing generated files under `raw/notes/` with `type: notes`. If the user explicitly passes another valid `--type`, honor that type, but do not create `book`, `books`, or `raw/books/`.
 - This option is deterministic for Markdown files. Do not infer a PDF or EPUB table of contents in this workflow.
+- Before applying a split for long Markdown/eBook sources, run `node scripts/recommend-markdown-split.mjs --source <path> --levels 2,3 --soft-limit 20000 --hard-limit 30000 --manifest <manifest.json>`.
+- Use the recommendation report to pick the default `--split-heading` level. If only 1-2 chunks exceed the hard warning threshold, keep the default level and split those chunks as exceptions rather than lowering the whole book level.
 - First run `node scripts/split-markdown-source.mjs --wiki <wiki-root> --source <path> --title "<title>" --source-key "<short-key>" --type <type> --split-heading <level> --dry-run`.
 - Review the generated mapping and stop if the user asked to inspect it before writing.
 - Run the same command with `--apply` to create raw files.

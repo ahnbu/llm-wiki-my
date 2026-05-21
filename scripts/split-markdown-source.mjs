@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { buildSplitPartsFromMarkdown, stripFrontmatter } from "./lib/markdown-split-units.mjs";
 
 const VALID_TYPES = ["articles", "papers", "repos", "notes", "data"];
 
@@ -30,6 +31,7 @@ function parseArgs(argv) {
     else if (arg === "--source-key") args.sourceKey = argv[++i];
     else if (arg === "--type") args.type = argv[++i];
     else if (arg === "--split-heading") args.level = Number(argv[++i]);
+    else if (arg === "--manifest") args.manifest = argv[++i];
     else if (arg === "--date") args.date = argv[++i];
     else if (arg === "--dry-run") args.dryRun = true;
     else if (arg === "--apply") {
@@ -41,7 +43,7 @@ function parseArgs(argv) {
   }
   if (!args.wiki || !args.source || !args.title || !args.level) {
     throw new Error(
-      "Usage: node scripts/split-markdown-source.mjs --wiki <wiki-root> --source <file.md> --title <title> --split-heading <1-6> [--source-key <short-key>] [--type notes] [--date YYYYMMDD] [--dry-run|--apply]"
+      "Usage: node scripts/split-markdown-source.mjs --wiki <wiki-root> --source <file.md> --title <title> --split-heading <1-6> [--source-key <short-key>] [--type notes] [--manifest <manifest.json>] [--date YYYYMMDD] [--dry-run|--apply]"
     );
   }
   if (!Number.isInteger(args.level) || args.level < 1 || args.level > 6) {
@@ -61,10 +63,6 @@ function assertInside(root, target) {
   }
 }
 
-function stripFrontmatter(text) {
-  return text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "");
-}
-
 function sanitize(input, fallback = "source") {
   const value = input
     .normalize("NFC")
@@ -78,7 +76,7 @@ function sanitize(input, fallback = "source") {
 }
 
 function sanitizeSectionHeading(input) {
-  return sanitize(input.replace(/^\d{1,3}\s+/, ""), "section");
+  return sanitize(input.replace(/^\d{1,3}\s+/, "").replace(/\b(\d+)\.\s+/g, "$1 "), "section");
 }
 
 async function uniqueFilename(rawDir, baseName, reserved = new Set()) {
@@ -98,76 +96,6 @@ async function uniqueFilename(rawDir, baseName, reserved = new Set()) {
   return candidate;
 }
 
-function pushNonEmpty(parts, part) {
-  if (part && part.lines.join("\n").trim()) parts.push(part);
-}
-
-function splitMarkdown(markdown, level) {
-  const lines = stripFrontmatter(markdown).split(/\r?\n/);
-  const headingPattern = new RegExp(`^#{${level}}\\s+(.+?)\\s*$`);
-  const parentPattern = level > 1 ? new RegExp(`^#{1,${level - 1}}\\s+(.+?)\\s*$`) : null;
-  const parts = [];
-  const intro = [];
-  let parent = "";
-  let current = null;
-  let special = null;
-
-  for (const line of lines) {
-    const headingMatch = line.match(headingPattern);
-    const parentMatch = parentPattern ? line.match(parentPattern) : null;
-    const lowerLevelHeading = parentMatch && !headingMatch ? parentMatch[1].trim() : "";
-
-    if (headingMatch) {
-      pushNonEmpty(parts, special);
-      special = null;
-      pushNonEmpty(parts, current);
-      current = { heading: headingMatch[1].trim(), parent, lines: [line] };
-      continue;
-    }
-
-    if (lowerLevelHeading) {
-      const specialMatch = lowerLevelHeading.match(/^(프롤로그|에필로그)$/i);
-      pushNonEmpty(parts, current);
-      current = null;
-      pushNonEmpty(parts, special);
-      special = null;
-      if (specialMatch) {
-        special = {
-          heading: lowerLevelHeading,
-          parent: "",
-          specialIndex: specialMatch[1] === "프롤로그" ? "00" : "99",
-          lines: [line],
-        };
-      } else {
-        parent = lowerLevelHeading;
-      }
-      continue;
-    }
-
-    if (special) special.lines.push(line);
-    else if (current) current.lines.push(line);
-    else intro.push(line);
-  }
-
-  pushNonEmpty(parts, current);
-  pushNonEmpty(parts, special);
-
-  const introText = intro.join("\n").trim();
-  const prologue = parts.find((part) => part.specialIndex === "00");
-  if (introText && prologue) {
-    prologue.lines.unshift("## 원문 서문", "", introText, "");
-  } else if (introText) {
-    parts.unshift({
-      heading: "프롤로그",
-      parent: "",
-      specialIndex: "00",
-      lines: ["## 원문 서문", "", introText],
-    });
-  }
-
-  return parts;
-}
-
 function yamlEscape(value) {
   return String(value).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
@@ -175,6 +103,7 @@ function yamlEscape(value) {
 function buildFrontmatter({ title, source, type, part, total, level, indexLabel }) {
   const summary = `${title} 중 '${part.heading}' 원문 조각`;
   const parent = part.parent ? `split_parent_heading: "${yamlEscape(part.parent)}"\n` : "";
+  const indexValue = Number.isInteger(Number(indexLabel)) ? Number(indexLabel) : `"${yamlEscape(indexLabel)}"`;
   return `---
 title: "${yamlEscape(`${title} - ${indexLabel} ${part.heading}`)}"
 source: "${yamlEscape(source)}"
@@ -186,12 +115,66 @@ book_title: "${yamlEscape(title)}"
 content_format: markdown
 split_source: "${yamlEscape(source)}"
 split_heading_level: ${level}
-split_part_index: ${Number(indexLabel)}
+split_part_index: ${indexValue}
+split_part_label: "${yamlEscape(indexLabel)}"
 split_part_total: ${total}
 split_heading: "${yamlEscape(part.heading)}"
+split_unit_kind: ${part.unitKind || "target-heading"}
+split_effective_heading_level: ${part.effectiveHeadingLevel || level}
 ${parent}---
 
 `;
+}
+
+function normalizePath(value) {
+  return path.resolve(value).replaceAll("\\", "/");
+}
+
+async function loadManifestEntry(manifestPath, sourcePath) {
+  if (!manifestPath) return null;
+  const manifest = JSON.parse(await fs.readFile(path.resolve(manifestPath), "utf8"));
+  const normalizedSource = normalizePath(sourcePath);
+  return (manifest.sources || []).find((source) => normalizePath(source.sourcePath) === normalizedSource) || null;
+}
+
+function applyManifest(parts, manifestEntry, markdown) {
+  if (!manifestEntry) return parts;
+  const labelMap = new Map((manifestEntry.generatedPartLabels || []).map((entry) => [entry.unitId, entry]));
+  const explicitMap = new Map((manifestEntry.explicitExceptionSplits || []).map((entry) => [entry.unitId, entry]));
+  const sourceLines = stripFrontmatter(markdown).split(/\r?\n/);
+  const output = [];
+
+  for (const part of parts) {
+    const explicit = explicitMap.get(part.unitId);
+    const labelEntry = labelMap.get(part.unitId);
+    if (explicit) {
+      for (const child of explicit.parts || []) {
+        if (!Number.isInteger(child.startLine) || !Number.isInteger(child.endLine) || child.startLine < 1 || child.endLine < child.startLine) {
+          throw new Error(`Invalid explicit boundary for ${part.heading}`);
+        }
+        const index = output.filter((item) => item.unitId === part.unitId).length;
+        output.push({
+          ...part,
+          heading: child.heading || part.heading,
+          unitKind: "exception-child",
+          specialIndex: "",
+          manifestLabel: child.label || labelEntry?.generatedLabels?.[index] || "",
+          lines: sourceLines.slice(child.startLine - 1, child.endLine),
+        });
+      }
+      continue;
+    }
+
+    if (labelEntry?.generatedLabels?.length > 1) {
+      throw new Error(`Exception split requires explicit boundaries for ${part.heading}`);
+    }
+    output.push({
+      ...part,
+      manifestLabel: labelEntry?.generatedLabels?.[0] || "",
+    });
+  }
+
+  return output;
 }
 
 async function main() {
@@ -201,7 +184,8 @@ async function main() {
   const rawDir = path.join(wikiRoot, "raw", args.type);
   assertInside(wikiRoot, rawDir);
   const markdown = await fs.readFile(sourcePath, "utf8");
-  const parts = splitMarkdown(markdown, args.level);
+  const manifestEntry = await loadManifestEntry(args.manifest, sourcePath);
+  const parts = applyManifest(buildSplitPartsFromMarkdown(markdown, { level: args.level }), manifestEntry, markdown);
   if (parts.length === 0) throw new Error(`No heading level ${args.level} sections found`);
 
   const sourceKey = sanitize(args.sourceKey);
@@ -210,7 +194,7 @@ async function main() {
   const sourceForFrontmatter = sourcePath.replaceAll("\\", "/");
   const files = [];
   for (const part of parts) {
-    const partLabel = part.specialIndex || String(regular++).padStart(2, "0");
+    const partLabel = part.manifestLabel || part.specialIndex || String(regular++).padStart(2, "0");
     const baseName = `${args.date}_${sourceKey}_${partLabel}_${sanitizeSectionHeading(part.heading)}.md`;
     const filename = await uniqueFilename(rawDir, baseName, reserved);
     const relPath = path.posix.join("raw", args.type, filename);
@@ -224,7 +208,7 @@ async function main() {
         level: args.level,
         indexLabel: partLabel,
       }) + `${part.lines.join("\n").trim()}\n`;
-    files.push({ relPath, body, heading: part.heading, parent: part.parent || null });
+    files.push({ relPath, body, heading: part.heading, parent: part.parent || null, unitKind: part.unitKind || "target-heading" });
   }
 
   console.log(
@@ -232,7 +216,7 @@ async function main() {
       {
         mode: args.apply ? "apply" : "dry-run",
         count: files.length,
-        files: files.map(({ relPath, heading, parent }) => ({ relPath, heading, parent })),
+        files: files.map(({ relPath, heading, parent, unitKind }) => ({ relPath, heading, parent, unitKind })),
       },
       null,
       2

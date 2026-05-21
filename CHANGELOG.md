@@ -6,6 +6,7 @@
 
 | 일시 | 유형 | 범위 | 변경내용 | 변경사유 | 작성AI |
 |---|---|---|---|---|---|
+| 2026-05-21 11:57 | feat | split | eBook split recommendation과 leaf 보존 분할 추가 | - | Codex |
 | 2026-05-21 11:14 | fix | git-hook | `CHANGELOG.local.md` 추적을 해제하고 root `CHANGELOG.md` 일원화 정책에 맞춰 hook 설정 정리 | upstream에 `CHANGELOG*`가 없는 fork 운영 정책과 커밋 hook 요구 충돌 해소 | Codex |
 | 2026-05-21 10:51 | refactor | ingest | raw 파일명 일일 순번 제거와 책 분할·마이그레이션 정책 정비 | - | Codex |
 | 2026-05-20 19:46 | feat | ingest | raw 파일명 YYYYMMDD_NN 규칙과 책 분할·마이그레이션 스크립트 추가 | - | Codex |
