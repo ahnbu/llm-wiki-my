@@ -6,6 +6,7 @@
 
 | 일시 | 유형 | 범위 | 변경내용 | 변경사유 | 작성AI |
 |---|---|---|---|---|---|
+| 2026-05-22 12:09 | docs | WIKI_USER_GUIDE | Codex @wiki 기능별 사용자 가이드 추가 | - | Codex |
 | 2026-05-22 11:51 | docs | query | query 출력 계약을 공통 reference로 승격하고 Codex/OpenCode mirror 검증을 보강 | - | Codex |
 | 2026-05-21 19:35 | fix | lint | raw/_images 자산 폴더 허용 및 테스트 추가 | - | Codex |
 | 2026-05-21 19:25 | feat | lint | source exclusions registry와 raw coverage backlog 처리 추가 | - | Codex |
