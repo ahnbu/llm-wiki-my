@@ -1,9 +1,4 @@
 ---
-title: Query Command
-created: 2026-05-22 11:41
-session_id:
-session_path:
-ai: unknown
 description: "Ask questions against the compiled wiki. Supports quick/standard/deep depth levels, --list for browsing, --include-archived for explicit archived reads, and --resume to reload context after a session break. Answers from wiki content only, with citations."
 argument-hint: "<question> [--quick] [--deep] [--raw] [--list] [--include-excluded] [--include-archived] [--resume] [--tag <tag>] [--category concepts|topics|references] [--with <wiki>...] [--wiki <name>] [--local]"
 allowed-tools: Read, Glob, Grep, Bash(ls:*), Edit

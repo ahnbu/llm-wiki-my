@@ -1,11 +1,3 @@
----
-title: Querying Reference
-created: 2026-05-22 11:40
-session_id:
-session_path:
-ai: unknown
----
-
 # Querying Reference
 
 This file is the source of truth for query retrieval and output contracts.
