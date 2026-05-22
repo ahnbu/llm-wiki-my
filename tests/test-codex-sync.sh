@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Local-CI: verify the Codex plugin mirror (plugins/llm-wiki/) stays in sync
-# with the Claude source of truth (claude-plugin/skills/wiki-manager/).
+# Local-CI: read-only check that the Codex plugin mirror (plugins/llm-wiki/)
+# stays in sync with the Claude source of truth
+# (claude-plugin/skills/wiki-manager/).
 #
-# Self-healing — on failure the sync script has ALREADY regenerated the
-# Codex tree. The agent just needs to stage and commit the result.
+# This test does not modify plugins/llm-wiki/. It generates the expected Codex
+# plugin tree in a temporary directory and compares that output with the current
+# working tree mirror.
 #
 # Why this exists: only LLMs work on this codebase, so drift between the
 # two packaging targets must be caught inside the agent's edit→test loop
@@ -13,17 +15,43 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-./scripts/sync-codex-plugin.sh >/dev/null
+TMP_BASE="${TMPDIR:-/tmp}"
+if [ ! -d "$TMP_BASE" ]; then
+  TMP_BASE="/tmp"
+fi
 
-if ! git -c core.autocrlf=true diff --quiet HEAD -- plugins/llm-wiki/; then
+TMP_ROOT="$(mktemp -d "$TMP_BASE/llm-wiki-codex-sync.XXXXXX")"
+EXPECTED_PLUGIN="$TMP_ROOT/llm-wiki"
+DIFF_FILE="$TMP_ROOT/codex-sync.diff"
+
+cleanup() {
+  case "${TMP_ROOT:-}" in
+    "$TMP_BASE"/llm-wiki-codex-sync.*)
+      rm -rf "$TMP_ROOT"
+      ;;
+  esac
+}
+trap cleanup EXIT
+
+CODEX_PLUGIN_OUT="$EXPECTED_PLUGIN" ./scripts/sync-codex-plugin.sh >/dev/null
+
+if ! diff -ru --strip-trailing-cr "$EXPECTED_PLUGIN" "$ROOT/plugins/llm-wiki" >"$DIFF_FILE"; then
   cat >&2 <<'MSG'
-FAIL: Codex plugin mirror is out of sync with claude-plugin/skills/wiki-manager/.
+SYNC NEEDED: Codex plugin mirror is not up to date with claude-plugin/skills/wiki-manager/.
 
-The sync script has already regenerated plugins/llm-wiki/. To fix:
-  1. git diff -- plugins/        # review the regenerated changes
-  2. git add plugins/            # stage them alongside the Claude-side edit
-  3. git commit                  # fold into the same commit
-  4. ./tests/test-codex-sync.sh  # re-run to confirm clean
+This test is read-only. It generated the expected Codex plugin in a temporary
+directory and compared it with plugins/llm-wiki/.
+
+Diff preview:
+MSG
+  head -200 "$DIFF_FILE" >&2
+  cat >&2 <<'MSG'
+
+To fix:
+  1. ./scripts/sync-codex-plugin.sh
+  2. git diff -- plugins/llm-wiki/
+  3. stage plugins/llm-wiki/ with the related Claude-side change
+  4. ./tests/test-codex-sync.sh
 
 This guards against the Codex copy drifting from the Claude source.
 MSG

@@ -37,7 +37,7 @@ git -C ~/.claude/plugins/marketplaces/llm-wiki remote set-url origin https://git
 ./tests/test-plugin-validate.sh   # plugin manifest + command frontmatter
 ./tests/test-structure.sh          # wiki fixture validation (84 assertions)
 ./tests/test-local-cli-lint.sh     # local scripts/llm-wiki lint helper
-./tests/test-codex-sync.sh         # Codex plugin mirror matches Claude source
+./tests/test-codex-sync.sh         # read-only Codex plugin mirror check
 ./tests/test-opencode-sync.sh     # OpenCode plugin mirror matches Claude source
 ```
 
@@ -47,9 +47,13 @@ git -C ~/.claude/plugins/marketplaces/llm-wiki remote set-url origin https://git
 ./tests/test-codex-runtime.sh      # bootstrap + headless prompt-input check for @wiki
 ```
 
-`test-codex-sync.sh` and `test-opencode-sync.sh` are self-healing: if they fail,
-the sync script has already regenerated the target directory — stage and commit
-the result, then re-run. Read the FAIL message; it tells you exactly what to do.
+`test-codex-sync.sh` is read-only: it generates the expected Codex plugin in a
+temporary directory and compares that output with `plugins/llm-wiki/`. If it
+reports `SYNC NEEDED`, run `./scripts/sync-codex-plugin.sh`, review and stage the
+generated `plugins/llm-wiki/` changes with the related source edit, then re-run
+the test.
+
+`test-opencode-sync.sh` still regenerates its target directory on failure.
 
 If you changed the golden wiki fixture, regenerate defect fixtures first:
 
@@ -73,7 +77,7 @@ Requires `ANTHROPIC_API_KEY`. Costs ~$2-5 per run.
 - **Changed the fuzzy router**: add or update test cases in `promptfooconfig.yaml` covering the new routing behavior plus negative controls.
 - **Added a new reference file**: `test-plugin-validate.sh` has three `for ref in ...` loops (Claude-side existence, Codex-side copied-reference validation, OpenCode-side symlink reachability) — add the new filename to all three.
 - **Changed directory structure** (new `raw/` or `wiki/` subdirectory): update `test-structure.sh` C1 directory list and C11 placement checks. Update the golden wiki fixture if needed.
-- **Edited `claude-plugin/skills/wiki-manager/`**: both `test-codex-sync.sh` and `test-opencode-sync.sh` will fail until you re-run both sync scripts and commit `plugins/`. Never edit `plugins/llm-wiki/` or `plugins/llm-wiki-opencode/` by hand — they are generated. Codex gets copied references for marketplace caching; OpenCode keeps a symlink into the Claude source.
+- **Edited `claude-plugin/skills/wiki-manager/`**: run `./scripts/sync-codex-plugin.sh` before committing Codex-visible changes, then run `./tests/test-codex-sync.sh`. The Codex sync test is read-only and reports `SYNC NEEDED` when `plugins/llm-wiki/` is stale. OpenCode still uses `./scripts/sync-opencode-plugin.sh` and `./tests/test-opencode-sync.sh`. Never edit `plugins/llm-wiki/` or `plugins/llm-wiki-opencode/` by hand — they are generated. Codex gets copied references for marketplace caching; OpenCode keeps a symlink into the Claude source.
 - **Added a runtime-specific text rewrite to a sync script**: update the corresponding sync script's SKILL.md replacement list. References are runtime-neutral and shared verbatim — do not add per-file replacements there.
 - **Changed Codex install docs or bootstrap flow**: run `./tests/test-codex-runtime.sh` to verify the bootstrap flow either resolves `@wiki` from a clean scratch Codex home or cleanly reports that `/plugins` still needs to be opened once for first-time materialization.
 

@@ -6,6 +6,7 @@
 
 | 일시 | 유형 | 범위 | 변경내용 | 변경사유 | 작성AI |
 |---|---|---|---|---|---|
+| 2026-05-22 12:47 | fix | sync | Codex sync 테스트를 읽기 전용 비교로 전환하고 sync 출력 override를 추가 | - | Codex |
 | 2026-05-22 12:17 | docs | BACKLOG | 이미지 포함 ingest 자산 경로 개선 후속 작업을 BACKLOG에 기록 | - | Codex |
 | 2026-05-22 12:16 | docs | _docs | 계획·spec 문서를 프로젝트 문서 저장 위치인 _docs로 이동 | - | Codex |
 | 2026-05-22 12:09 | docs | WIKI_USER_GUIDE | Codex @wiki 기능별 사용자 가이드 추가 | - | Codex |

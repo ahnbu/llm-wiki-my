@@ -3,10 +3,32 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SOURCE_SKILL="$ROOT/claude-plugin/skills/wiki-manager"
-TARGET_PLUGIN="$ROOT/plugins/llm-wiki"
+DEFAULT_TARGET_PLUGIN="$ROOT/plugins/llm-wiki"
+
+if [ "${CODEX_PLUGIN_OUT+x}" = "x" ] && [ -z "$CODEX_PLUGIN_OUT" ]; then
+  echo "Refusing unsafe Codex plugin output path: empty CODEX_PLUGIN_OUT" >&2
+  exit 1
+fi
+
+TARGET_PLUGIN="${CODEX_PLUGIN_OUT:-$DEFAULT_TARGET_PLUGIN}"
+TARGET_PLUGIN="$(python3 - "$TARGET_PLUGIN" <<'PY'
+import sys
+from pathlib import Path
+
+print(Path(sys.argv[1]).expanduser().resolve())
+PY
+)"
 TARGET_SKILL="$TARGET_PLUGIN/skills/wiki"
 CLAUDE_MANIFEST="$ROOT/claude-plugin/.claude-plugin/plugin.json"
+CODEX_MANIFEST_TEMPLATE="$DEFAULT_TARGET_PLUGIN/.codex-plugin/plugin.json"
 CODEX_MANIFEST="$TARGET_PLUGIN/.codex-plugin/plugin.json"
+
+case "$TARGET_PLUGIN" in
+  ""|"/"|"$ROOT"|"$ROOT/"|"$ROOT/claude-plugin"|"$ROOT/claude-plugin/"*|"$SOURCE_SKILL"|"$SOURCE_SKILL"/*)
+    echo "Refusing unsafe Codex plugin output path: $TARGET_PLUGIN" >&2
+    exit 1
+    ;;
+esac
 
 if [ ! -d "$SOURCE_SKILL" ]; then
   echo "Missing source skill: $SOURCE_SKILL" >&2
@@ -18,12 +40,16 @@ if [ ! -f "$CLAUDE_MANIFEST" ]; then
   exit 1
 fi
 
-if [ ! -f "$CODEX_MANIFEST" ]; then
-  echo "Missing Codex manifest: $CODEX_MANIFEST" >&2
+if [ ! -f "$CODEX_MANIFEST_TEMPLATE" ]; then
+  echo "Missing Codex manifest template: $CODEX_MANIFEST_TEMPLATE" >&2
   exit 1
 fi
 
-mkdir -p "$TARGET_PLUGIN/skills"
+mkdir -p "$TARGET_PLUGIN/skills" "$TARGET_PLUGIN/.codex-plugin"
+if [ "$CODEX_MANIFEST" != "$CODEX_MANIFEST_TEMPLATE" ]; then
+  cp "$CODEX_MANIFEST_TEMPLATE" "$CODEX_MANIFEST"
+fi
+
 # The Codex marketplace caches plugin contents eagerly, so references/ must be
 # copied into the generated tree rather than left as a symlink. agents/ is
 # Codex-only metadata and is recreated below.
