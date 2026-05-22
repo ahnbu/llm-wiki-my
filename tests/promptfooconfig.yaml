@@ -131,6 +131,30 @@ tests:
       - type: cost
         threshold: 0.50
 
+  - description: "Query: answer includes sources and knowledge gaps"
+    vars:
+      prompt: "What testing patterns exist for LLM tools?"
+    assert:
+      - type: skill-used
+        value: wiki
+      - type: llm-rubric
+        value: "Agent treated this as a query against existing wiki content and the answer includes a Sources used section plus a Knowledge gaps section. If there are no gaps, the Knowledge gaps section explicitly says none."
+        threshold: 0.75
+      - type: cost
+        threshold: 0.50
+
+  - description: "Query: no evidence does not fall back to general knowledge"
+    vars:
+      prompt: "According to my wiki, what exact warranty policy applies to the fictional product XJ-991?"
+    assert:
+      - type: skill-used
+        value: wiki
+      - type: llm-rubric
+        value: "If the wiki lacks evidence for the exact warranty policy, the agent says the wiki has insufficient evidence, does not invent a policy from general knowledge, and suggests concrete source material to ingest."
+        threshold: 0.75
+      - type: cost
+        threshold: 0.50
+
   # --- Plan flag routing ---
   - description: "Router: research with --plan routes to research, not /wiki:plan"
     vars:

@@ -131,7 +131,8 @@ See [references/compilation.md](references/compilation.md).
 Flow: Survey uncompiled sources → plan articles → classify (concept/topic/reference) → write/update articles with cross-references → update all indexes.
 
 ### Query
-Flow: Read `_index.md` → identify relevant articles by summary/tag → read articles → follow See Also links → Grep for additional matches → synthesize answer with citations → note gaps → peek active sibling wikis. Supports `--resume` to reload context after a session break — reads session files, recent log entries, wiki stats, and last-updated articles to produce a "where you left off" briefing. Deep queries may peek archived sibling indexes in a separate Archived Matches section; full archived reads require explicit user intent.
+See [references/querying.md](references/querying.md).
+Flow: Resolve wiki → read `_index.md` files → identify relevant articles by summary/tag → read articles → follow See Also links → Grep for additional matches → synthesize answer with the query output contract → note gaps → peek active sibling wikis when relevant. Deep queries may peek archived sibling indexes in a separate Archived Matches section; full archived reads require explicit user intent.
 
 ### Linting
 See [references/linting.md](references/linting.md).

@@ -105,8 +105,7 @@ reference material you need for that workflow:
 - `dataset` → `references/datasets.md`
 - `archive` → `references/archive.md`
 - `compile` → `references/compilation.md` and `references/indexing.md`
-- `query` → read the relevant `_index.md` files first, then only the articles
-  needed to answer
+- `query` → `references/querying.md`
 - `lint` → `references/linting.md`
 - `audit` → `references/audit.md`
 - `research`, `plan`, `output`, `assess` → `references/research-infrastructure.md`

@@ -9,7 +9,7 @@ PLUGIN_JSON="$PLUGIN_DIR/.claude-plugin/plugin.json"
 PASS=0
 FAIL=0
 TOTAL=0
-REFERENCE_NAMES="archive audit command-prelude compilation datasets hub-resolution indexing ingestion inventory librarian linting projects research-infrastructure wiki-structure"
+REFERENCE_NAMES="archive audit command-prelude compilation datasets hub-resolution indexing ingestion inventory librarian linting projects querying research-infrastructure wiki-structure"
 
 log_pass() { PASS=$((PASS + 1)); TOTAL=$((TOTAL + 1)); printf "  \033[32mPASS\033[0m: %s\n" "$1"; }
 log_fail() { FAIL=$((FAIL + 1)); TOTAL=$((TOTAL + 1)); printf "  \033[31mFAIL\033[0m: %s — %s\n" "$1" "$2"; }
@@ -101,6 +101,8 @@ echo ""
 echo "--- ahnbu fork policy checks ---"
 assert_contains "$PLUGIN_DIR/commands/compile.md" "Korean by default|한국어" "compile command documents Korean article defaults"
 assert_contains "$PLUGIN_DIR/commands/query.md" "Korean by default|한국어" "query command documents Korean response defaults"
+assert_contains "$PLUGIN_DIR/skills/wiki-manager/SKILL.md" "references/querying\\.md" "skill query workflow references querying contract"
+assert_contains "$PLUGIN_DIR/commands/query.md" "references/querying\\.md" "query command delegates shared query contract"
 assert_contains "$PLUGIN_DIR/commands/output.md" "Korean by default|한국어" "output command documents Korean artifact defaults"
 assert_contains "$PLUGIN_DIR/commands/ingest.md" "YYYYMMDD_한국어-요약명\\.md|YYYYMMDD_" "ingest command documents YYYYMMDD raw filename defaults"
 assert_contains "$PLUGIN_DIR/skills/wiki-manager/references/ingestion.md" "YYYYMMDD_한국어-요약명\\.md|YYYYMMDD_" "ingestion protocol documents YYYYMMDD filename defaults"
@@ -157,6 +159,10 @@ if [ -d "$REFS_DIR" ] && [ ! -L "$REFS_DIR" ]; then
 else
   log_fail "Codex references directory invalid" "expected copied files under plugins/llm-wiki/skills/wiki/references"
 fi
+
+assert_contains "$CODEX_SKILL/SKILL.md" "references/querying\\.md" "Codex skill query workflow references querying contract"
+assert_contains "$CODEX_SKILL/references/querying.md" "Sources used" "Codex querying reference preserves Sources used contract"
+assert_contains "$CODEX_SKILL/references/querying.md" "Knowledge gaps" "Codex querying reference preserves Knowledge gaps contract"
 
 # Codex plugin manifest
 echo ""
