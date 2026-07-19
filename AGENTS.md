@@ -2,7 +2,24 @@
 
 > This is an "idea file" in the spirit of [Karpathy's LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f). Paste it into any LLM agent (OpenAI Codex, Claude Code, OpenCode, Gemini Code Assist, or similar) and it will build and manage a wiki for you. The agent customizes the specifics; this file communicates the system.
 
-> **Editing the llm-wiki repo itself?** This file is the portable wiki *protocol* for end users. The dev contract for the plugin codebase (testing, sync workflow, project structure, symlink invariant) lives in [`CLAUDE.md`](CLAUDE.md) — read it in addition to this file. Both Claude Code and Codex agents working on the repo should treat `CLAUDE.md` as the source of truth for repo-level workflow.
+> **Editing the llm-wiki repo itself?** This file is the portable wiki *protocol* for end users — everything below the "Repo Development Rules" section describes how an agent *uses* the wiki, not how to develop this repository. When working on the repo's own code, follow the rules in the next section, and treat [`CLAUDE.md`](CLAUDE.md) as the detailed source of truth for repo-level workflow.
+
+## Repo Development Rules
+
+> 이 섹션은 **이 레포(llm-wiki-my) 자체를 개발할 때** 적용된다. 이 아래 `## What This Is`부터 시작하는 wiki 프로토콜은 wiki *사용법*이며, 레포 개발 규칙이 아니다. Claude·Codex·agy 등 어떤 에이전트든 이 레포를 편집할 때는 아래 규칙을 따르고, 상세는 [`CLAUDE.md`](CLAUDE.md)를 정본으로 본다.
+
+- **정본 위치**: `claude-plugin/`가 source of truth이자 1차 배포 대상이다.
+- **생성물 hand-edit 금지**: `plugins/llm-wiki/`와 `plugins/llm-wiki-opencode/`는 sync 스크립트로 생성된다. 직접 수정하지 말고, `claude-plugin/`을 고친 뒤 `scripts/sync-codex-plugin.sh`(Codex)·`scripts/sync-opencode-plugin.sh`(OpenCode)로 재생성한다.
+- **테스트 필수 실행**: plugin 코드를 바꾸면 완료 선언 전에 구조 테스트를 돌린다.
+  - `./tests/test-plugin-validate.sh` (plugin manifest + command frontmatter + AGENTS.md 검증)
+  - `./tests/test-structure.sh` (wiki fixture 검증)
+  - `./tests/test-codex-sync.sh` (Codex 미러 read-only 확인 — `SYNC NEEDED`면 sync 스크립트 실행)
+  - `./tests/test-opencode-sync.sh` (OpenCode 미러 확인)
+- **GitHub 전송**: SSH 대신 GitHub CLI web login + HTTPS를 쓴다 (`gh auth login --web --git-protocol https`).
+- **릴리스**: `.claude/release-checklist.md`를 따르고, 버전 bump 전 구조 테스트를 모두 통과시킨다.
+- 각 항목의 배경·세부 절차·테스트 갱신 기준은 [`CLAUDE.md`](CLAUDE.md)에 있다.
+
+---
 
 ## What This Is
 
