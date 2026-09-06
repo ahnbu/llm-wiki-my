@@ -6,6 +6,7 @@
 
 | 일시 | 유형 | 범위 | 변경내용 | 변경사유 | 작성AI |
 |---|---|---|---|---|---|
+| 2026-09-06 13:31 | docs | backlog | 복제된 BACKLOG 관리 규칙 제거 + 2줄 배너 삽입 (정본은 문서_작성기준 §4) | - | Claude |
 | 2026-07-19 12:47 | docs | rules | AGENTS.md에 Repo Development Rules 추가 — Codex/agy 개발 시 규칙 로딩 확보 | - | Claude |
 | 2026-07-08 11:27 | chore | gitignore | gitignore에 .codegraph/를 추가해 CodeGraph 로컬 캐시가 작업트리에 노출되지 않도록 보완 | - | Unknown |
 | 2026-05-22 12:48 | fix | query | query 문서와 공통 querying reference의 hook 주입 frontmatter 제거 | - | Codex |
